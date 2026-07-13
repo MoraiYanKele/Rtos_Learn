@@ -1,0 +1,6 @@
+r
+h
+loadfile build\Debug\Rtos_Learn.elf
+r
+g
+q
