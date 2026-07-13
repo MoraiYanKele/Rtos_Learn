@@ -7,26 +7,6 @@ cmake_minimum_required(VERSION 3.22)
 # User is free to modify the file as much as necessary
 #
 
-find_program(JLINK_COMMANDER
-    NAMES JLink.exe
-    HINTS "C:/Program Files/SEGGER/JLink_V798"
-)
-
-if(JLINK_COMMANDER)
-    add_custom_target(flash_jlink
-        COMMAND ${JLINK_COMMANDER}
-            -device STM32F405RG
-            -if SWD
-            -speed 4000
-            -autoconnect 1
-            -CommanderScript ${CMAKE_SOURCE_DIR}/flash.jlink
-        DEPENDS ${CMAKE_PROJECT_NAME}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Flashing ${CMAKE_PROJECT_NAME} with J-Link"
-    )
-endif()
-
-
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -64,11 +44,13 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    User/src/sparrow.c
     # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    User/Inc
     # Add user defined include paths
 )
 
@@ -86,3 +68,22 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+find_program(JLINK_COMMANDER
+    NAMES JLink.exe
+    HINTS "C:/Program Files/SEGGER/JLink_V798"
+)
+
+if(JLINK_COMMANDER)
+    add_custom_target(flash_jlink
+        COMMAND ${JLINK_COMMANDER}
+            -device STM32F405RG
+            -if SWD
+            -speed 4000
+            -autoconnect 1
+            -CommanderScript ${CMAKE_SOURCE_DIR}/flash.jlink
+        DEPENDS ${CMAKE_PROJECT_NAME}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Flashing ${CMAKE_PROJECT_NAME} with J-Link"
+    )
+endif()
