@@ -59,18 +59,18 @@ void Heap_Init(void) {
     first_node->blockSize = theHeap.allSize;    
 }
 
-void *Heap_Malloc(size_t wantSize) {
+void *Heap_Malloc(size_t _want_size) {
     heap_node *prev_node;
     heap_node *use_node;
     heap_node *new_node;
     size_t want_size = 0;;
     void *return_ptr = NULL;
 
-    if (wantSize == 0) {
+    if (_want_size == 0) {
         return NULL;
     }
 
-    want_size = (wantSize + heapStructSize + ALIGNMENT_MASK) & ~(size_t)ALIGNMENT_MASK;
+    want_size = (_want_size + heapStructSize + ALIGNMENT_MASK) & ~(size_t)ALIGNMENT_MASK;
 
     if (theHeap.tail == NULL) {
         Heap_Init();
@@ -107,9 +107,9 @@ void *Heap_Malloc(size_t wantSize) {
     return return_ptr;
 }
 
-void Heap_Free(void *freePtr) {
+void Heap_Free(void *_free_ptr) {
     heap_node *link_ptr;
-    uint8_t *free_ptr = (uint8_t *)freePtr;
+    uint8_t *free_ptr = (uint8_t *)_free_ptr;
 
     free_ptr -= heapStructSize;
     link_ptr = (heap_node *)free_ptr;
@@ -118,6 +118,24 @@ void Heap_Free(void *freePtr) {
     InsertFreeBlock(link_ptr);
 }
 
-static void InsertFreeBlock(heap_node* insertBlockPtr) {
-    
+static void InsertFreeBlock(heap_node* _insert_block_ptr) {
+    if (_insert_block_ptr == NULL) {
+        return;
+    }
+    heap_node *first_fit_node = NULL;
+    heap_node *insert_block_ptr = _insert_block_ptr;
+    uint8_t *get_addr = NULL;
+
+
+    for (first_fit_node = &theHeap.head; first_fit_node->next != theHeap.tail && first_fit_node->next < insert_block_ptr; first_fit_node = first_fit_node->next) {
+        // finding the fit node
+    }
+
+    insert_block_ptr->next = first_fit_node->next;
+    first_fit_node->next = insert_block_ptr; 
+
+    get_addr = (uint8_t *)insert_block_ptr;
+    if ((get_addr + insert_block_ptr->blockSize) == (uint8_t *)(insert_block_ptr->next)) {
+        insert_block_ptr 
+    }
 }
