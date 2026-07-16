@@ -136,6 +136,16 @@ static void InsertFreeBlock(heap_node* _insert_block_ptr) {
 
     get_addr = (uint8_t *)insert_block_ptr;
     if ((get_addr + insert_block_ptr->blockSize) == (uint8_t *)(insert_block_ptr->next)) {
-        insert_block_ptr 
+        if (insert_block_ptr->next != theHeap.tail) {
+            insert_block_ptr->blockSize += insert_block_ptr->next->blockSize;
+            insert_block_ptr->next = insert_block_ptr->next->next;
+        } else {
+            insert_block_ptr->next = theHeap.tail;
+        }
+    }
+    get_addr = (uint8_t *)first_fit_node;
+    if (get_addr + first_fit_node->blockSize == (uint8_t *)insert_block_ptr) {
+        first_fit_node->blockSize += insert_block_ptr->blockSize;
+        first_fit_node->next = insert_block_ptr->next;
     }
 }
