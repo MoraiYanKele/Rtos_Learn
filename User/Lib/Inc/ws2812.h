@@ -8,6 +8,12 @@ extern "C" {
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
 
+#ifndef Class
+#define Class(class)            \
+  typedef struct class class;   \
+  struct class
+#endif
+
 /* 一个 WS2812 灯珠需要 24 个 PWM 周期：8 位绿、8 位红、8 位蓝。 */
 #define WS2812_BITS_PER_LED             24U
 
@@ -32,7 +38,7 @@ typedef enum
   WS2812_COLOR_ORDER_BGR,
   WS2812_COLOR_ORDER_RBG,
   WS2812_COLOR_ORDER_GBR
-} WS2812_ColorOrderTypeDef;
+} WS2812_ColorOrder;
 
 /* 颜色按常用 RGB 顺序存储，方便用户设置。 */
 typedef struct
@@ -40,16 +46,16 @@ typedef struct
   uint8_t r;
   uint8_t g;
   uint8_t b;
-} WS2812_ColorTypeDef;
+} WS2812_Color;
 
-typedef struct
+Class(WS2812)
 {
   /* 用于生成 WS2812 波形的定时器 PWM 输出。 */
   TIM_HandleTypeDef *htim;
   uint32_t channel;
 
   /* 用户提供的缓冲区，本驱动不使用动态内存分配。 */
-  WS2812_ColorTypeDef *pixels;
+  WS2812_Color *pixels;
   uint16_t *dma_buffer;
   uint32_t dma_buffer_length;
 
@@ -64,57 +70,48 @@ typedef struct
 
   /* 亮度范围 0~255；0 为输出全灭，255 为原始颜色值。 */
   uint8_t brightness;
-  WS2812_ColorOrderTypeDef color_order;
+  WS2812_ColorOrder color_order;
 
   /* DMA 正在发送一帧数据时置位。 */
   volatile uint8_t busy;
-} WS2812_HandleTypeDef;
 
-/* 初始化一个 WS2812 对象，像素缓冲区和 DMA 缓冲区由调用者传入。 */
-HAL_StatusTypeDef WS2812_Init(WS2812_HandleTypeDef *handle,
-                              TIM_HandleTypeDef *htim,
-                              uint32_t channel,
-                              WS2812_ColorTypeDef *pixel_buffer,
-                              uint16_t led_capacity,
-                              uint16_t *dma_buffer,
-                              uint32_t dma_buffer_length);
+  HAL_StatusTypeDef (*Init)(WS2812 *self,
+                            TIM_HandleTypeDef *htim,
+                            uint32_t channel,
+                            WS2812_Color *pixel_buffer,
+                            uint16_t led_capacity,
+                            uint16_t *dma_buffer,
+                            uint32_t dma_buffer_length);
+  HAL_StatusTypeDef (*DeInit)(WS2812 *self);
+  HAL_StatusTypeDef (*SetLedCount)(WS2812 *self, uint16_t led_count);
+  HAL_StatusTypeDef (*SetTiming)(WS2812 *self,
+                                 uint16_t zero_pulse,
+                                 uint16_t one_pulse,
+                                 uint16_t reset_slots);
+  void (*SetColorOrder)(WS2812 *self, WS2812_ColorOrder color_order);
+  void (*SetBrightness)(WS2812 *self, uint8_t brightness);
+  uint8_t (*GetBrightness)(const WS2812 *self);
+  uint16_t (*GetLedCount)(const WS2812 *self);
+  uint8_t (*IsBusy)(const WS2812 *self);
+  HAL_StatusTypeDef (*SetPixel)(WS2812 *self, uint16_t index, WS2812_Color color);
+  HAL_StatusTypeDef (*SetPixelRGB)(WS2812 *self,
+                                   uint16_t index,
+                                   uint8_t red,
+                                   uint8_t green,
+                                   uint8_t blue);
+  HAL_StatusTypeDef (*SetAll)(WS2812 *self, WS2812_Color color);
+  HAL_StatusTypeDef (*Clear)(WS2812 *self);
+  HAL_StatusTypeDef (*Show)(WS2812 *self);
+};
 
-HAL_StatusTypeDef WS2812_DeInit(WS2812_HandleTypeDef *handle);
-
-/* 修改当前生效的灯珠数量，不重新分配缓冲区。 */
-HAL_StatusTypeDef WS2812_SetLedCount(WS2812_HandleTypeDef *handle, uint16_t led_count);
-
-/* 使用不同定时器频率或 ARR 时，可手动覆盖 CCR 时序参数。 */
-HAL_StatusTypeDef WS2812_SetTiming(WS2812_HandleTypeDef *handle,
-                                   uint16_t zero_pulse,
-                                   uint16_t one_pulse,
-                                   uint16_t reset_slots);
-
-void WS2812_SetColorOrder(WS2812_HandleTypeDef *handle, WS2812_ColorOrderTypeDef color_order);
-void WS2812_SetBrightness(WS2812_HandleTypeDef *handle, uint8_t brightness);
-uint8_t WS2812_GetBrightness(const WS2812_HandleTypeDef *handle);
-uint16_t WS2812_GetLedCount(const WS2812_HandleTypeDef *handle);
-uint8_t WS2812_IsBusy(const WS2812_HandleTypeDef *handle);
-
-HAL_StatusTypeDef WS2812_SetPixel(WS2812_HandleTypeDef *handle,
-                                  uint16_t index,
-                                  WS2812_ColorTypeDef color);
-HAL_StatusTypeDef WS2812_SetPixelRGB(WS2812_HandleTypeDef *handle,
-                                     uint16_t index,
-                                     uint8_t red,
-                                     uint8_t green,
-                                     uint8_t blue);
-HAL_StatusTypeDef WS2812_SetAll(WS2812_HandleTypeDef *handle, WS2812_ColorTypeDef color);
-HAL_StatusTypeDef WS2812_Clear(WS2812_HandleTypeDef *handle);
-
-/* 将像素颜色转换为 PWM 占空比缓冲区，并启动 TIM PWM DMA 发送。 */
-HAL_StatusTypeDef WS2812_Show(WS2812_HandleTypeDef *handle);
+/* 创建对象：清空成员并绑定所有方法函数指针。 */
+void WS2812_Create(WS2812 *self);
 
 /*
  * 如果应用层已经自己实现 HAL_TIM_PWM_PulseFinishedCallback，
  * 可以定义 WS2812_NO_HAL_CALLBACK，并在自己的回调中调用本函数。
  */
-void WS2812_HandleTimerPulseFinished(TIM_HandleTypeDef *htim);
+void WS2812_TimerPulseFinishedCallback(TIM_HandleTypeDef *htim);
 
 #ifdef __cplusplus
 }

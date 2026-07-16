@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "ws2812.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define LED_NUM 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,7 +45,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+static WS2812 ws2812;
+static WS2812_Color ws2812_pixels[LED_NUM];
+static uint16_t ws2812_dma_buffer[WS2812_DMA_BUFFER_LENGTH(LED_NUM)];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,11 +93,24 @@ int main(void)
   MX_DMA_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
+  WS2812_Create(&ws2812);
+  ws2812.Init(&ws2812,
+              &htim3,
+              TIM_CHANNEL_1,
+              ws2812_pixels,
+              LED_NUM,
+              ws2812_dma_buffer,
+              WS2812_DMA_BUFFER_LENGTH(LED_NUM));
+  ws2812.SetBrightness(&ws2812, 80);  // 亮度 0~255
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  if (!ws2812.IsBusy(&ws2812))
+  {
+    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
+    ws2812.Show(&ws2812);
+  }
   while (1)
   {
     /* USER CODE END WHILE */
