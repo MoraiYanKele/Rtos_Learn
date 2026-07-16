@@ -44,13 +44,13 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    User/src/sparrow.c
+    User/my_rtos/src/sparrow.c
     # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    User/Inc
+    User/my_rtos/Inc
     # Add user defined include paths
 )
 
