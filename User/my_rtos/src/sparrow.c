@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 #include "sparrow.h"
+#include "ws2812.h"
+#include "main.h"
 
 #define CONFIG_HEAP         8 * 1024
 #define ALIGNMENT_MASK      (uintptr_t)0x07
@@ -186,7 +188,8 @@ typedef void (* TaskFunction_t)( void * );
 uint32_t *PortInitialiseStack(uint32_t *_topOfStack, 
                               TaskFunction_t code, 
                               void *parameters, 
-                              TaskHandle_t *const self) {
+                              TaskHandle_t *const self
+    ) {
     uint32_t *top_of_stack = _topOfStack - 16;
     Stack_Register *stack = (Stack_Register *)top_of_stack;
 
@@ -201,7 +204,8 @@ uint32_t *PortInitialiseStack(uint32_t *_topOfStack,
 void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth, 
                 void *const parameters,
                 uint32_t _priority, 
-                TaskHandle_t *const self) {
+                TaskHandle_t *const self
+    ) {
     uint32_t *top_stack = NULL;
     TCB_t *new_tcb = (TCB_t *)Heap_Malloc(sizeof(TCB_t));
     *self = (TCB_t *)new_tcb;
@@ -214,4 +218,50 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
     new_tcb->top_of_stack = PortInitialiseStack(top_stack, taskCode, parameters, self);
 
     currentTCB = new_tcb;
+}
+
+TaskHandle_t leisureTcb = NULL;
+
+void EnterSleepMode(void) {
+
+    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
+    ws2812.Show(&ws2812);
+    HAL_Delay(500);
+    ws2812.SetPixelRGB(&ws2812, 0, 0, 0, 255);
+    ws2812.Show(&ws2812);
+    HAL_Delay(500);
+
+}
+
+void leisureTask() {
+    while (1) {
+        EnterSleepMode();
+    }
+}
+
+void SchedulerInit(void) {
+    TaskCreate(leisureTask,
+               128,
+               NULL,
+               0,
+               &leisureTcb
+    );
+}
+
+__attribute__( ( always_inline ) ) inline void SchedulerStart( void )
+{
+    /* Start the first task. */
+    __asm volatile (
+            " ldr r0, =0xE000ED08 	\n"/* Use the NVIC offset register to locate the stack. */
+            " ldr r0, [r0] 			\n"
+            " ldr r0, [r0] 			\n"
+            " msr msp, r0			\n"/* Set the msp back to the start of the stack. */
+            " cpsie i				\n"/* Globally enable interrupts. */
+            " cpsie f				\n"
+            " dsb					\n"
+            " isb					\n"
+            " svc 0					\n"/* System call to start first task. */
+            " nop					\n"
+            " .ltorg				\n"
+            );
 }

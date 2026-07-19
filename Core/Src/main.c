@@ -45,7 +45,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-static WS2812 ws2812;
+WS2812 ws2812;
 static WS2812_Color ws2812_pixels[LED_NUM];
 static uint16_t ws2812_dma_buffer[WS2812_DMA_BUFFER_LENGTH(LED_NUM)];
 /* USER CODE END PV */

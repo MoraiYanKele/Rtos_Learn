@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+extern WS2812 ws2812;
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
