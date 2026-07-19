@@ -106,7 +106,7 @@ void *Heap_Malloc(size_t _want_size) {
 
     return return_ptr;
 }
-
+static void InsertFreeBlock(heap_node* _insert_block_ptr);
 void Heap_Free(void *_free_ptr) {
     heap_node *link_ptr;
     uint8_t *free_ptr = (uint8_t *)_free_ptr;
@@ -148,4 +148,70 @@ static void InsertFreeBlock(heap_node* _insert_block_ptr) {
         first_fit_node->blockSize += insert_block_ptr->blockSize;
         first_fit_node->next = insert_block_ptr->next;
     }
+}
+
+Class (Stack_Register) {
+        //manual stacking
+    uint32_t r4;
+    uint32_t r5;
+    uint32_t r6;
+    uint32_t r7;
+    uint32_t r8;
+    uint32_t r9;
+    uint32_t r10;
+    uint32_t r11;
+    //automatic stacking
+    uint32_t r0;
+    uint32_t r1;
+    uint32_t r2;
+    uint32_t r3;
+    uint32_t r12;
+    uint32_t LR;
+    uint32_t PC;
+    uint32_t xPSR;
+};
+
+
+Class (TCB_t) {
+    volatile uint32_t *top_of_stack;
+    unsigned long priority;
+    uint32_t *stack;
+    Stack_Register *self_stack;  //Save the status of the stack in the task !You can use gdb to debug it!
+};
+
+typedef  TCB_t         *TaskHandle_t;
+__attribute__( ( used ) )  TCB_t * volatile currentTCB = NULL;
+typedef void (* TaskFunction_t)( void * );
+
+uint32_t *PortInitialiseStack(uint32_t *_topOfStack, 
+                              TaskFunction_t code, 
+                              void *parameters, 
+                              TaskHandle_t *const self) {
+    uint32_t *top_of_stack = _topOfStack - 16;
+    Stack_Register *stack = (Stack_Register *)top_of_stack;
+
+    stack->xPSR = 0x01000000UL;
+    stack->PC = ((uint32_t)code) & ((uint32_t)0xfffffffeUL);
+    stack->LR = (uint32_t)parameters;
+    stack->r0 = (uint32_t)self;
+    (*self)->self_stack = stack;
+
+    return top_of_stack;
+}
+void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth, 
+                void *const parameters,
+                uint32_t _priority, 
+                TaskHandle_t *const self) {
+    uint32_t *top_stack = NULL;
+    TCB_t *new_tcb = (TCB_t *)Heap_Malloc(sizeof(TCB_t));
+    *self = (TCB_t *)new_tcb;
+    
+    new_tcb->priority = _priority;
+    new_tcb->stack = (uint32_t *)Heap_Malloc((size_t)stackDepth * sizeof(uint32_t));
+    
+    top_stack = new_tcb->stack + (stackDepth - (uint32_t)1);
+    top_stack = (uint32_t *)((uint32_t)top_stack & ~(uint32_t)ALIGNMENT_MASK);
+    new_tcb->top_of_stack = PortInitialiseStack(top_stack, taskCode, parameters, self);
+
+    currentTCB = new_tcb;
 }
