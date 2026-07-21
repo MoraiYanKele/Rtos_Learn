@@ -25,6 +25,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
+#include "sparrow.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,6 +94,9 @@ int main(void)
   MX_DMA_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+
+
   WS2812_Create(&ws2812);
   ws2812.Init(&ws2812,
               &htim3,
@@ -102,6 +106,10 @@ int main(void)
               ws2812_dma_buffer,
               WS2812_DMA_BUFFER_LENGTH(LED_NUM));
   ws2812.SetBrightness(&ws2812, 80);  // 亮度 0~255
+
+SchedulerInit();
+SchedulerStart();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */

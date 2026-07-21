@@ -233,7 +233,7 @@ void EnterSleepMode(void) {
 
 }
 
-void leisureTask() {
+void leisureTask(void *parameters) {
     while (1) {
         EnterSleepMode();
     }
@@ -246,6 +246,26 @@ void SchedulerInit(void) {
                0,
                &leisureTcb
     );
+}
+
+#define vPortSVCHandler SVC_Handler
+
+
+void __attribute__((naked)) vPortSVCHandler(void) {
+    __asm volatile (
+            " ldr r3, pxCurrentTCBConst2 	\n"
+            " ldr r1, [r3] 			\n"
+            " ldr r0, [r1] 			\n"/* Copy the top of stack from the TCB. */
+            " ldmia r0!, {r4-r11} 	\n"/* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
+            " msr psp, r0			\n"/* Restore the task stack pointer. */
+            "isb                        \n"
+            " mov r0, #0			\n"
+            " msr basepri, r0		\n"/* Clear the base priority register. */
+            " orr r14, #0xd			\n"/* Return from interrupt uses the PSP. */
+            " bx r14					\n"
+            ".align 4				\n"
+            "pxCurrentTCBConst2: .word currentTCB   \n"
+            );
 }
 
 __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
@@ -265,3 +285,4 @@ __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
             " .ltorg				\n"
             );
 }
+

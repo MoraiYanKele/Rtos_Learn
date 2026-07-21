@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ws2812.h"
 extern WS2812 ws2812;
 /* USER CODE END Includes */
 
