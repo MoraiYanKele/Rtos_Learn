@@ -51,12 +51,45 @@
 WS2812 ws2812;
 static WS2812_Color ws2812_pixels[LED_NUM];
 static uint16_t ws2812_dma_buffer[WS2812_DMA_BUFFER_LENGTH(LED_NUM)];
+
+TaskHandle_t task1_handle = NULL;
+TaskHandle_t task2_handle = NULL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+void Task1(void *parameters) {
+  while (1) {
+    Printf("Task 1 is running\n");
+    HAL_Delay(1000);
+    switchTask();
+  }
+}
+void Task2(void *parameters) {
+  while (1) {
+    Printf("Task 2 is running\n");
+    HAL_Delay(1000);
+    switchTask();
+  }
+}
 
+void App() {
+  TaskCreate(
+    Task1,
+    128,
+    NULL,
+    1,
+    &task1_handle
+  );
+  TaskCreate(
+    Task2,
+    128,
+    NULL,
+    2,
+    &task2_handle
+  );
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -112,6 +145,7 @@ int main(void)
 
   VOFA_Init();
   SchedulerInit();
+  App();
   SchedulerStart();
 
   /* USER CODE END 2 */
