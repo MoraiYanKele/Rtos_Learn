@@ -4,6 +4,7 @@
 #include "sparrow.h"
 #include "ws2812.h"
 #include "main.h"
+#include "VOFA.h"
 
 #define CONFIG_HEAP         8 * 1024
 #define ALIGNMENT_MASK      (uintptr_t)0x07
@@ -224,11 +225,9 @@ TaskHandle_t leisureTcb = NULL;
 
 void EnterSleepMode(void) {
 
-    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
-    ws2812.Show(&ws2812);
+    Printf("1\n");
     HAL_Delay(500);
-    ws2812.SetPixelRGB(&ws2812, 0, 0, 0, 255);
-    ws2812.Show(&ws2812);
+    Printf("2\n");
     HAL_Delay(500);
 
 }

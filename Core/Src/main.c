@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
 #include "sparrow.h"
+#include "VOFA.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -109,18 +110,14 @@ int main(void)
               WS2812_DMA_BUFFER_LENGTH(LED_NUM));
   ws2812.SetBrightness(&ws2812, 80);  // 亮度 0~255
 
-SchedulerInit();
-SchedulerStart();
+  VOFA_Init();
+  SchedulerInit();
+  SchedulerStart();
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  if (!ws2812.IsBusy(&ws2812))
-  {
-    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
-    ws2812.Show(&ws2812);
-  }
   while (1)
   {
     /* USER CODE END WHILE */

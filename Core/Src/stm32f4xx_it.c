@@ -146,7 +146,7 @@ void UsageFault_Handler(void)
 /**
   * @brief This function handles System service call via SWI instruction.
   */
-void SVC_Handler(void)
+__attribute__((weak)) void SVC_Handler(void)
 {
   /* USER CODE BEGIN SVCall_IRQn 0 */
 
