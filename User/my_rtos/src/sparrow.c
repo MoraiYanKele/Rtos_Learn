@@ -10,6 +10,9 @@
 
 #define MIN_SIZE            ((size_t)(heapStructSize << 1))
 
+#define CONFIG_MAX_PRIORI               32
+#define CONFIG_SHIELD_INTER_PRIORITY    191
+
 #define Class(class)            \
     typedef struct class class; \
     struct class
@@ -209,6 +212,8 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
     uint32_t *top_stack = NULL;
     TCB_t *new_tcb = (TCB_t *)Heap_Malloc(sizeof(TCB_t));
     *self = (TCB_t *)new_tcb;
+
+    tcbTaskTable[_priority] = new_tcb;
     
     new_tcb->priority = _priority;
     new_tcb->stack = (uint32_t *)Heap_Malloc((size_t)stackDepth * sizeof(uint32_t));
@@ -222,22 +227,7 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
 
 TaskHandle_t leisureTcb = NULL;
 
-void EnterSleepMode(void) {
 
-    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
-    ws2812.Show(&ws2812);
-    HAL_Delay(500);
-    ws2812.SetPixelRGB(&ws2812, 0, 0, 0, 255);
-    ws2812.Show(&ws2812);
-    HAL_Delay(500);
-
-}
-
-void leisureTask(void *parameters) {
-    while (1) {
-        EnterSleepMode();
-    }
-}
 
 void SchedulerInit(void) {
     TaskCreate(leisureTask,
@@ -247,11 +237,13 @@ void SchedulerInit(void) {
                &leisureTcb
     );
 }
+TaskHandle_t tcbTaskTable[CONFIG_MAX_PRIORI] = { NULL };
 
 #define vPortSVCHandler SVC_Handler
+#define xPortPendSVHandler PendSV_Handler
 
 
-void __attribute__((naked)) vPortSVCHandler(void) {
+__attribute__((naked)) void vPortSVCHandler(void) {
     __asm volatile (
             " ldr r3, pxCurrentTCBConst2 	\n"
             " ldr r1, [r3] 			\n"
@@ -268,8 +260,46 @@ void __attribute__((naked)) vPortSVCHandler(void) {
             );
 }
 
+__attribute__( ( naked ) )  void  xPortPendSVHandler( void ) {
+    __asm volatile (
+        "	mrs r0, psp							\n"
+        "	isb									\n"
+        "										\n"
+        "	ldr	r3, pxCurrentTCBConst			\n"
+        "	ldr	r2, [r3]						\n"
+        "										\n"
+        "	stmdb r0!, {r4-r11}					\n"
+        "	str r0, [r2]						\n"
+        "										\n"
+        "	stmdb sp!, {r3, r14}				\n"
+        "	mov r0, %0							\n"
+        "	msr basepri, r0						\n"
+        "   dsb                                 \n"
+        "   isb                                 \n"
+        "	bl vTaskSwitchContext				\n"
+        "	mov r0, #0							\n"
+        "	msr basepri, r0						\n"
+        "	ldmia sp!, {r3, r14}				\n"
+        "										\n"
+        "	ldr r1, [r3]						\n"
+        "	ldr r0, [r1]						\n"
+        "	ldmia r0!, {r4-r11}					\n"
+        "	msr psp, r0							\n"
+        "	isb									\n"
+        "	bx r14								\n"
+        "	nop									\n"
+        "	.align 4							\n"
+        "pxCurrentTCBConst: .word currentTCB	\n"
+        ::"i" ( CONFIG_SHIELD_INTER_PRIORITY )
+    )
+}
+
+#define switchTask() \
+*( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
+
 __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
 {
+    ( *( ( volatile uint32_t * ) 0xe000ed20 ) ) |= ( ( ( uint32_t ) 255UL ) << 16UL );
     /* Start the first task. */
     __asm volatile (
             " ldr r0, =0xE000ED08 	\n"/* Use the NVIC offset register to locate the stack. */
@@ -286,3 +316,19 @@ __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
             );
 }
 
+void EnterSleepMode(void) {
+
+    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
+    ws2812.Show(&ws2812);
+    HAL_Delay(500);
+    ws2812.SetPixelRGB(&ws2812, 0, 0, 0, 255);
+    ws2812.Show(&ws2812);
+    HAL_Delay(500);
+
+}
+
+void leisureTask(void *parameters) {
+    while (1) {
+        switchTask();
+    }
+}
