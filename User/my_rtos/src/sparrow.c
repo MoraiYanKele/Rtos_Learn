@@ -4,6 +4,7 @@
 #include "sparrow.h"
 #include "ws2812.h"
 #include "main.h"
+#include "VOFA.h"
 
 #define CONFIG_HEAP         8 * 1024
 #define ALIGNMENT_MASK      (uintptr_t)0x07
@@ -12,6 +13,9 @@
 
 #define CONFIG_MAX_PRIORI               32
 #define CONFIG_SHIELD_INTER_PRIORITY    191
+
+#define switchTask() \
+*( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
 
 #define Class(class)            \
     typedef struct class class; \
@@ -187,6 +191,7 @@ Class (TCB_t) {
 typedef  TCB_t         *TaskHandle_t;
 __attribute__( ( used ) )  TCB_t * volatile currentTCB = NULL;
 typedef void (* TaskFunction_t)( void * );
+TaskHandle_t tcbTaskTable[CONFIG_MAX_PRIORI] = { NULL };
 
 uint32_t *PortInitialiseStack(uint32_t *_topOfStack, 
                               TaskFunction_t code, 
@@ -227,7 +232,19 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
 
 TaskHandle_t leisureTcb = NULL;
 
+void EnterSleepMode(void) {
+    Printf("1\n");
+    HAL_Delay(500);
+    Printf("2\n");
+    HAL_Delay(500);
+}
 
+void leisureTask(void *parameters) {
+    while (1) {
+        EnterSleepMode();
+        switchTask();
+    }
+}
 
 void SchedulerInit(void) {
     TaskCreate(leisureTask,
@@ -237,7 +254,22 @@ void SchedulerInit(void) {
                &leisureTcb
     );
 }
-TaskHandle_t tcbTaskTable[CONFIG_MAX_PRIORI] = { NULL };
+
+void vTaskSwitchContext(void) {
+    uint32_t nextPriority = 0;
+
+    if (currentTCB != NULL) {
+        nextPriority = ((uint32_t)currentTCB->priority + 1UL) % CONFIG_MAX_PRIORI;
+    }
+
+    for (uint32_t priorityOffset = 0; priorityOffset < CONFIG_MAX_PRIORI; priorityOffset++) {
+        uint32_t priority = (nextPriority + priorityOffset) % CONFIG_MAX_PRIORI;
+        if (tcbTaskTable[priority] != NULL) {
+            currentTCB = tcbTaskTable[priority];
+            return;
+        }
+    }
+}
 
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
@@ -291,11 +323,8 @@ __attribute__( ( naked ) )  void  xPortPendSVHandler( void ) {
         "	.align 4							\n"
         "pxCurrentTCBConst: .word currentTCB	\n"
         ::"i" ( CONFIG_SHIELD_INTER_PRIORITY )
-    )
+    );
 }
-
-#define switchTask() \
-*( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
 
 __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
 {
@@ -314,21 +343,4 @@ __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
             " nop					\n"
             " .ltorg				\n"
             );
-}
-
-void EnterSleepMode(void) {
-
-    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
-    ws2812.Show(&ws2812);
-    HAL_Delay(500);
-    ws2812.SetPixelRGB(&ws2812, 0, 0, 0, 255);
-    ws2812.Show(&ws2812);
-    HAL_Delay(500);
-
-}
-
-void leisureTask(void *parameters) {
-    while (1) {
-        switchTask();
-    }
 }

@@ -46,6 +46,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/my_rtos/src/sparrow.c
     User/Lib/Src/ws2812.c
+    User/Lib/Src/VOFA.c
     # Add user sources here
 )
 

@@ -20,12 +20,14 @@
 #include "main.h"
 #include "dma.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
 #include "sparrow.h"
+#include "VOFA.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,6 +95,7 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM3_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -107,18 +110,14 @@ int main(void)
               WS2812_DMA_BUFFER_LENGTH(LED_NUM));
   ws2812.SetBrightness(&ws2812, 80);  // 亮度 0~255
 
-SchedulerInit();
-SchedulerStart();
+  VOFA_Init();
+  SchedulerInit();
+  SchedulerStart();
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  if (!ws2812.IsBusy(&ws2812))
-  {
-    ws2812.SetPixelRGB(&ws2812, 0, 255, 0, 255);
-    ws2812.Show(&ws2812);
-  }
   while (1)
   {
     /* USER CODE END WHILE */
