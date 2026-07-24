@@ -49,3 +49,6 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 void *const parameters,
                 uint32_t _priority, 
                 TaskHandle_t *const self);
+                
+void ExitCritical(uint32_t _basepri);
+uint32_t EnterCritical(void);

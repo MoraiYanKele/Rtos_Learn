@@ -253,20 +253,11 @@ void SchedulerInit(void) {
     );
 }
 
+
 void vTaskSwitchContext(void) {
-    uint32_t nextPriority = 0;
-
-    if (currentTCB != NULL) {
-        nextPriority = ((uint32_t)currentTCB->priority + 1UL) % CONFIG_MAX_PRIORI;
-    }
-
-    for (uint32_t priorityOffset = 0; priorityOffset < CONFIG_MAX_PRIORI; priorityOffset++) {
-        uint32_t priority = (nextPriority + priorityOffset) % CONFIG_MAX_PRIORI;
-        if (tcbTaskTable[priority] != NULL) {
-            currentTCB = tcbTaskTable[priority];
-            return;
-        }
-    }
+    static uint32_t x = 0;
+    x++;
+    currentTCB = tcbTaskTable[x % 3];
 }
 
 #define vPortSVCHandler SVC_Handler
@@ -341,4 +332,37 @@ __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
             " nop					\n"
             " .ltorg				\n"
             );
+}
+
+__attribute__( ( always_inline ) ) inline uint32_t EnterCritical(void) {
+    uint32_t return_value;
+    uint32_t temp = 0;
+
+    __asm volatile(
+        "cpsid i			\n"
+        "mrs %0, basepri	\n"
+        "mov %1, %2			\n"
+        "msr basepri, %1	\n"
+        "dsb                \n"
+        "isb                \n"
+        "cpsie i			\n"
+        : "=r"(return_value), "=r"(temp)
+        : "i"(CONFIG_SHIELD_INTER_PRIORITY)
+        : "memory"
+    );
+
+    return return_value;
+} 
+
+__attribute__( ( always_inline ) ) inline void ExitCritical(uint32_t _basepri) {
+    __asm volatile(
+        "cpsid i			\n"
+        "msr basepri, %0	\n"
+        "dsb                \n"
+        "isb                \n"
+        "cpsie i			\n"
+        :
+        : "r"(_basepri)
+        : "memory"
+    );
 }
