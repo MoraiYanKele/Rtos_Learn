@@ -44,6 +44,8 @@ static uint8_t allHeap[CONFIG_HEAP];
 
 static void InsertFreeBlock(heap_node *insertBlockPtr);
 
+uint32_t readyBitTable = 0;
+
 void Heap_Init(void) {
     heap_node *first_node;
     
@@ -158,38 +160,8 @@ static void InsertFreeBlock(heap_node* _insert_block_ptr) {
     }
 }
 
-// Class (Stack_Register) {
-//         //manual stacking
-//     uint32_t r4;
-//     uint32_t r5;
-//     uint32_t r6;
-//     uint32_t r7;
-//     uint32_t r8;
-//     uint32_t r9;
-//     uint32_t r10;
-//     uint32_t r11;
-//     //automatic stacking
-//     uint32_t r0;
-//     uint32_t r1;
-//     uint32_t r2;
-//     uint32_t r3;
-//     uint32_t r12;
-//     uint32_t LR;
-//     uint32_t PC;
-//     uint32_t xPSR;
-// };
 
-
-// Class (TCB_t) {
-//     volatile uint32_t *top_of_stack;
-//     unsigned long priority;
-//     uint32_t *stack;
-//     Stack_Register *self_stack;  //Save the status of the stack in the task !You can use gdb to debug it!
-// };
-
-// typedef  TCB_t         *TaskHandle_t;
 __attribute__( ( used ) )  TCB_t * volatile currentTCB = NULL;
-// typedef void (* TaskFunction_t)( void * );
 TaskHandle_t tcbTaskTable[CONFIG_MAX_PRIORI] = { NULL };
 
 uint32_t *PortInitialiseStack(uint32_t *_topOfStack, 
@@ -227,6 +199,8 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
     new_tcb->top_of_stack = PortInitialiseStack(top_stack, taskCode, parameters, self);
 
     currentTCB = new_tcb;
+
+    readyBitTable |= (1UL << _priority);
 }
 
 TaskHandle_t leisureTcb = NULL;
@@ -255,10 +229,25 @@ void SchedulerInit(void) {
 
 
 void vTaskSwitchContext(void) {
-    static uint32_t x = 0;
-    x++;
-    currentTCB = tcbTaskTable[x % 3];
+    uint8_t highest_priority = FindHighestPriority();
+    currentTCB = tcbTaskTable[highest_priority];
 }
+
+
+__attribute__((always_inline)) static inline uint8_t FindHighestPriority(void) {
+    uint8_t top_zero_number;
+    uint8_t temp;
+
+    __asm volatile (
+        "clz %0, %2\n"
+        "mov %1, #31\n"
+        "sub %0, %1, %0\n"
+        :"=r" (top_zero_number),"=r"(temp)
+        :"r" (readyBitTable)
+    );
+    return top_zero_number;
+}
+
 
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler

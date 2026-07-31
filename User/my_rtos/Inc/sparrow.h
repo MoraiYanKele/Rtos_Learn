@@ -9,7 +9,8 @@
     typedef struct class class; \
     struct class
 
-#define switchTask() \
+//  触发PendSV中断
+#define switchTask() \ 
 *( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
 
 Class (Stack_Register) {
