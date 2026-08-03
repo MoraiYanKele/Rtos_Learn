@@ -206,15 +206,13 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
 TaskHandle_t leisureTcb = NULL;
 
 void EnterSleepMode(void) {
-    Printf("1\n");
-    HAL_Delay(500);
-    Printf("2\n");
-    HAL_Delay(500);
+    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+    __WFI();
 }
 
 void leisureTask(void *parameters) {
     while (1) {
-        switchTask();
+        EnterSleepMode();
     }
 }
 
