@@ -86,7 +86,7 @@ void App() {
     Task2,
     128,
     NULL,
-    2,
+    8,
     &task2_handle
   );
 }
