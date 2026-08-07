@@ -226,10 +226,7 @@ void SchedulerInit(void) {
 }
 
 
-void vTaskSwitchContext(void) {
-    uint8_t highest_priority = FindHighestPriority();
-    currentTCB = tcbTaskTable[highest_priority];
-}
+
 
 
 __attribute__((always_inline)) static inline uint8_t FindHighestPriority(void) {
@@ -246,6 +243,10 @@ __attribute__((always_inline)) static inline uint8_t FindHighestPriority(void) {
     return top_zero_number;
 }
 
+void vTaskSwitchContext(void) {
+    uint8_t highest_priority = FindHighestPriority();
+    currentTCB = tcbTaskTable[highest_priority];
+}
 
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
