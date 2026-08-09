@@ -46,6 +46,27 @@ static void InsertFreeBlock(heap_node *insertBlockPtr);
 
 uint32_t readyBitTable = 0;
 
+uint32_t nextTicks = ~(uint32_t)0;
+uint32_t tickBase = 0;
+
+uint32_t delayBitTable = 0;
+uint32_t ticksTable[CONFIG_MAX_PRIORI] = {0};
+uint32_t tickTableAssist[CONFIG_MAX_PRIORI] = {0};
+uint32_t *wakeTicksTable;
+uint32_t *overTicksTable;
+
+static inline void TicksTableInit(void) {
+    wakeTicksTable = ticksTable;
+    overTicksTable = tickTableAssist;
+} 
+
+static inline void TicksTableSwitch(void) {
+    uint32_t *temp = wakeTicksTable;
+    wakeTicksTable = overTicksTable;
+    overTicksTable = temp;
+}
+
+
 void Heap_Init(void) {
     heap_node *first_node;
     
@@ -217,6 +238,8 @@ void leisureTask(void *parameters) {
 }
 
 void SchedulerInit(void) {
+    TicksTableInit();
+
     TaskCreate(leisureTask,
                128,
                NULL,
@@ -225,6 +248,11 @@ void SchedulerInit(void) {
     );
 }
 
+void SysTick_Handler(void) {
+    uint32_t basepri = EnterCritical();
+    CheckTicks();
+    ExitCritical(basepri);
+}
 
 
 
@@ -243,10 +271,43 @@ __attribute__((always_inline)) static inline uint8_t FindHighestPriority(void) {
     return top_zero_number;
 }
 
-void vTaskSwitchContext(void) {
+void TaskSwitchContext(void) {
     uint8_t highest_priority = FindHighestPriority();
     currentTCB = tcbTaskTable[highest_priority];
 }
+
+
+void TaskDelay(uint16_t _ticks) { // 也可以设置为 uint32_t 类型，逻辑不变
+    uint32_t wake_time = tickBase + _ticks;
+    TCB_t *current_task = currentTCB;
+    if (wake_time < tickBase) {
+        overTicksTable[current_task->priority] = wake_time;
+    } else {
+        wakeTicksTable[current_task->priority] = wake_time;
+    }
+
+    delayBitTable |= (1UL << current_task->priority);
+    readyBitTable &= ~(1UL << current_task->priority);
+
+    SwitchTask();
+}
+
+void CheckTicks(void) {
+    tickBase += 1;
+    if (tickBase == 0) {
+        TicksTableSwitch();
+    }
+
+    for (uint8_t i = 0; i < CONFIG_MAX_PRIORI; i++) {
+        if (wakeTicksTable[i] > 0 && wakeTicksTable[i] <= tickBase) {
+            wakeTicksTable[i] = 0;
+            delayBitTable &= ~(1UL << i);
+            readyBitTable |= (1UL << i);
+        }
+    }
+    SwitchTask();
+}
+
 
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
@@ -285,7 +346,7 @@ __attribute__( ( naked ) )  void  xPortPendSVHandler( void ) {
         "	msr basepri, r0						\n"
         "   dsb                                 \n"
         "   isb                                 \n"
-        "	bl vTaskSwitchContext				\n"
+        "	bl TaskSwitchContext				\n"
         "	mov r0, #0							\n"
         "	msr basepri, r0						\n"
         "	ldmia sp!, {r3, r14}				\n"
@@ -306,6 +367,13 @@ __attribute__( ( naked ) )  void  xPortPendSVHandler( void ) {
 __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
 {
     ( *( ( volatile uint32_t * ) 0xe000ed20 ) ) |= ( ( ( uint32_t ) 255UL ) << 16UL );
+    ( *( ( volatile uint32_t * ) 0xe000ed20 ) ) |= ( ( ( uint32_t ) 255UL ) << 24UL );
+
+    SysTick->CTRL = 0UL;
+    SysTick->VAL = 0UL;
+    /* Configure SysTick to interrupt at the requested rate. */
+    SysTick->LOAD = ( CONFIG_SYSTICK_CLOCK_HZ / CONFIG_TICK_RATE_HZ ) - 1UL;
+    SysTick->CTRL = ( ( 1UL << 2UL ) | ( 1UL << 1UL ) | ( 1UL << 0UL ) );
     /* Start the first task. */
     __asm volatile (
             " ldr r0, =0xE000ED08 	\n"/* Use the NVIC offset register to locate the stack. */

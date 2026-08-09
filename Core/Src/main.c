@@ -62,15 +62,13 @@ void SystemClock_Config(void);
 void Task1(void *parameters) {
   while (1) {
     Printf("Task 1 is running\n");
-    HAL_Delay(1000);
-    switchTask();
+    TaskDelay(1000);
   }
 }
 void Task2(void *parameters) {
   while (1) {
     Printf("Task 2 is running\n");
-    HAL_Delay(1000);
-    switchTask();
+    TaskDelay(1000);
   }
 }
 

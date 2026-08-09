@@ -17,7 +17,7 @@
 #define CONFIG_TICK_RATE_HZ             ((uint32_t) 1000)
 
 //  触发PendSV中断
-#define switchTask() \ 
+#define SwitchTask() \
 *( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
 
 Class (Stack_Register) {
@@ -58,5 +58,10 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 uint32_t _priority, 
                 TaskHandle_t *const self);
                 
+void TaskDelay(uint16_t _ticks);
 void ExitCritical(uint32_t _basepri);
 uint32_t EnterCritical(void);
+
+
+/* private */ 
+void CheckTicks(void);
