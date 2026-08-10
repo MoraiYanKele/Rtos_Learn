@@ -1,67 +1,36 @@
 #pragma once
 
-#include "stm32f4xx.h"
-#include "stm32f4xx_hal.h"
-#include "main.h"
+/* ==========================================================================
+ * sparrow —— 一个用于学习的小 RTOS
+ *
+ * 应用层只需要 include 这一个头文件。
+ *
+ * 代码结构：
+ *   Inc/sparrow_conf.h      可调参数（堆大小、优先级数量、节拍频率……）
+ *   Inc/sparrow_def.h       公共类型（TCB_t、TaskHandle_t、TaskFunction_t）
+ *   Inc/kernel/heap.h       堆分配器
+ *   Inc/kernel/task.h       任务创建与 TCB 表
+ *   Inc/kernel/sched.h      优先级位图调度
+ *   Inc/kernel/tick.h       时基与任务延时
+ *   Inc/port/port_def.h     Cortex-M4 架构定义（栈帧布局、PendSV 触发）
+ *   Inc/port/port.h         Cortex-M4 架构接口（栈初始化、临界区、启动）
+ *
+ * 典型用法：
+ *   SchedulerInit();                                  // 建时基和空闲任务
+ *   TaskCreate(Task1, 128, NULL, 1, &task1_handle);   // 建自己的任务
+ *   SchedulerStart();                                 // 启动，不返回
+ * ========================================================================== */
+
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "sparrow_conf.h"
+#include "sparrow_def.h"
 
-#define Class(class)            \
-    typedef struct class class; \
-    struct class
+#include "kernel/heap.h"
+#include "kernel/sched.h"
+#include "kernel/task.h"
+#include "kernel/tick.h"
 
-
-
-#define CONFIG_SYSTICK_CLOCK_HZ         ((unsigned long) 168000000)
-#define CONFIG_TICK_RATE_HZ             ((uint32_t) 1000)
-
-//  触发PendSV中断
-#define SwitchTask() \
-*( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
-
-Class (Stack_Register) {
-        //manual stacking
-    uint32_t r4;
-    uint32_t r5;
-    uint32_t r6;
-    uint32_t r7;
-    uint32_t r8;
-    uint32_t r9;
-    uint32_t r10;
-    uint32_t r11;
-    //automatic stacking
-    uint32_t r0;
-    uint32_t r1;
-    uint32_t r2;
-    uint32_t r3;
-    uint32_t r12;
-    uint32_t LR;
-    uint32_t PC;
-    uint32_t xPSR;
-};
-
-Class (TCB_t) {
-    volatile uint32_t *top_of_stack;
-    unsigned long priority;
-    uint32_t *stack;
-    Stack_Register *self_stack;  //Save the status of the stack in the task !You can use gdb to debug it!
-};
-
-typedef  TCB_t         *TaskHandle_t;
-typedef void (* TaskFunction_t)( void * );
-
-void SchedulerInit(void);
-void SchedulerStart(void);
-void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth, 
-                void *const parameters,
-                uint32_t _priority, 
-                TaskHandle_t *const self);
-                
-void TaskDelay(uint16_t _ticks);
-void ExitCritical(uint32_t _basepri);
-uint32_t EnterCritical(void);
-
-
-/* private */ 
-void CheckTicks(void);
+#include "port/port.h"
+#include "port/port_def.h"

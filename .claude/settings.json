@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /tmp/sparrow_tidy)",
+      "Bash(arm-none-eabi-size -A build/Debug/Rtos_Learn.elf)",
+      "Bash(arm-none-eabi-objdump -d build/Debug/Rtos_Learn.elf)",
+      "Bash(arm-none-eabi-nm -n build/Debug/Rtos_Learn.elf)",
+      "Read(//tmp/sparrow_tidy/**)",
+      "Bash(cd \"d:/Code/Rtos_learn/Rtos_Learn\" && cp User/my_rtos/src/sparrow.c /tmp/sparrow_tidy/sparrow.c.orig && rm User/my_rtos/src/sparrow.c && echo \"backed up + removed\" && find User/my_rtos -type f | sort)",
+      "Bash(awk '/<TaskSwitchContext>:/,/^$/' asm_before.txt)",
+      "Bash(awk '/<TaskSwitchContext>:/,/^$/' asm_after.txt)",
+      "Bash(arm-none-eabi-objdump -d \"d:/Code/Rtos_learn/Rtos_Learn/build/Debug/Rtos_Learn.elf\")",
+      "Bash(arm-none-eabi-size \"d:/Code/Rtos_learn/Rtos_Learn/build/Debug/Rtos_Learn.elf\")",
+      "Bash(PYTHONIOENCODING=utf-8 python cmp_asm.py asm_before.txt asm_after.txt)"
+    ],
+    "additionalDirectories": [
+      "\\tmp\\sparrow_tidy",
+      "C:\\Users\\woan\\AppData\\Local\\Temp\\sparrow_tidy"
+    ]
+  }
+}
