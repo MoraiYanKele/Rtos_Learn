@@ -292,14 +292,19 @@ void TaskSwitchContext(void) {
 
 void TaskDelay(uint16_t _ticks) { // 也可以设置为 uint32_t 类型，逻辑不变
 
-    TCB_t *current_task = currentTCB;
-    uint8_t priority = (uint8_t)current_task->priority;
-    uint32_t task_bit = 1UL << priority;
-
+    
     if (_ticks == 0) {
         SwitchTask();
         return;
     }
+
+    uint32_t basepri = EnterCritical();
+
+    TCB_t *current_task = currentTCB;
+    uint8_t priority = (uint8_t)current_task->priority;
+    uint32_t task_bit = 1UL << priority;
+
+
     uint32_t wake_time = tickBase + _ticks;
     
     delayBitTable &= ~task_bit;
@@ -320,6 +325,7 @@ void TaskDelay(uint16_t _ticks) { // 也可以设置为 uint32_t 类型，逻辑
     delayBitTable |= task_bit;
     readyBitTable &= ~task_bit;
 
+    ExitCritical(basepri);
     SwitchTask();
 }
 
@@ -429,35 +435,32 @@ __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
             );
 }
 
-__attribute__( ( always_inline ) ) inline uint32_t EnterCritical(void) {
-    uint32_t return_value;
-    uint32_t temp = 0;
+__attribute__( ( always_inline ) ) 
+static inline uint32_t EnterCritical(void) {
+    uint32_t old_basepri;
+    uint32_t new_basepri = CONFIG_SHIELD_INTER_PRIORITY;
 
     __asm volatile(
-        "cpsid i			\n"
-        "mrs %0, basepri	\n"
-        "mov %1, %2			\n"
-        "msr basepri, %1	\n"
-        "dsb                \n"
-        "isb                \n"
-        "cpsie i			\n"
-        : "=r"(return_value), "=r"(temp)
-        : "i"(CONFIG_SHIELD_INTER_PRIORITY)
+        "mrs %0, basepri       \n"
+        "msr basepri_max, %1   \n"
+        "dsb                   \n"
+        "isb                   \n"
+        : "=r"(old_basepri)
+        : "r"(new_basepri)
         : "memory"
     );
 
-    return return_value;
+    return old_basepri;
 } 
 
-__attribute__( ( always_inline ) ) inline void ExitCritical(uint32_t _basepri) {
+__attribute__((always_inline))
+static inline void ExitCritical(uint32_t old_basepri) {
     __asm volatile(
-        "cpsid i			\n"
-        "msr basepri, %0	\n"
-        "dsb                \n"
-        "isb                \n"
-        "cpsie i			\n"
+        "msr basepri, %0       \n"
+        "dsb                   \n"
+        "isb                   \n"
         :
-        : "r"(_basepri)
+        : "r"(old_basepri)
         : "memory"
     );
 }

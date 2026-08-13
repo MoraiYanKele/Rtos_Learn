@@ -59,8 +59,8 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 TaskHandle_t *const self);
                 
 void TaskDelay(uint16_t _ticks);
-void ExitCritical(uint32_t _basepri);
-uint32_t EnterCritical(void);
+__attribute__((always_inline)) static inline void ExitCritical(uint32_t old_basepri);
+__attribute__( ( always_inline ) ) static inline uint32_t EnterCritical(void);
 
 
 /* private */ 
