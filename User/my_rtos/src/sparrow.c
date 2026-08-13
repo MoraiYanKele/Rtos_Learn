@@ -12,8 +12,13 @@
 #define MIN_SIZE            ((size_t)(heapStructSize << 1))
 
 #define CONFIG_MAX_PRIORI               32
-#define CONFIG_SHIELD_INTER_PRIORITY    191 // （0xBF）
 
+#define CONFIG_MAX_SYSCALL_PRIORITY  11U
+#define CONFIG_SHIELD_INTER_PRIORITY \
+    (CONFIG_MAX_SYSCALL_PRIORITY << (8U - __NVIC_PRIO_BITS))
+
+
+#define TICK_HALF_RANGE                 0x80000000UL
 
 
 #define Class(class)            \
@@ -51,29 +56,7 @@ uint32_t tickBase = 0;
 
 uint32_t delayBitTable = 0; // 总的延时表
 
-uint32_t wakeDelayBitTable = 0;
-uint32_t overDelayBitTable = 0;
-
-uint32_t ticksTable[CONFIG_MAX_PRIORI] = {0};
-uint32_t tickTableAssist[CONFIG_MAX_PRIORI] = {0};
-uint32_t *wakeTicksTable;
-uint32_t *overTicksTable;
-
-static inline void TicksTableInit(void) {
-    wakeTicksTable = ticksTable;
-    overTicksTable = tickTableAssist;
-} 
-
-static inline void TicksTableSwitch(void) {
-    uint32_t *temp_table = wakeTicksTable;
-    wakeTicksTable = overTicksTable;
-    overTicksTable = temp_table;
-
-    uint32_t temp_bits = wakeDelayBitTable;
-    wakeDelayBitTable = overDelayBitTable;
-    overDelayBitTable = temp_bits;
-}
-
+uint32_t wakeTicksTable[CONFIG_MAX_PRIORI] = {0}; // 任务唤醒时间表
 
 void Heap_Init(void) {
     heap_node *first_node;
@@ -246,8 +229,6 @@ void leisureTask(void *parameters) {
 }
 
 void SchedulerInit(void) {
-    TicksTableInit();
-
     TaskCreate(leisureTask,
                128,
                NULL,
@@ -290,9 +271,12 @@ void TaskSwitchContext(void) {
 }
 
 
-void TaskDelay(uint16_t _ticks) { // 也可以设置为 uint32_t 类型，逻辑不变
+static inline uint8_t IsTickReached(uint32_t now, uint32_t deadline) {
+    return (uint32_t)(now - deadline) < TICK_HALF_RANGE;
+}
 
-    
+void TaskDelay(uint16_t _ticks) {
+
     if (_ticks == 0) {
         SwitchTask();
         return;
@@ -300,42 +284,23 @@ void TaskDelay(uint16_t _ticks) { // 也可以设置为 uint32_t 类型，逻辑
 
     uint32_t basepri = EnterCritical();
 
-    TCB_t *current_task = currentTCB;
-    uint8_t priority = (uint8_t)current_task->priority;
+    uint32_t priority = currentTCB->priority;
     uint32_t task_bit = 1UL << priority;
 
-
-    uint32_t wake_time = tickBase + _ticks;
+    wakeTicksTable[priority] = tickBase + (uint32_t)_ticks;
     
-    delayBitTable &= ~task_bit;
-    wakeDelayBitTable &= ~task_bit;
-    overDelayBitTable &= ~task_bit;
-
-    wakeTicksTable[priority] = 0;
-    overTicksTable[priority] = 0;
-
-    if (wake_time < tickBase) {
-        overTicksTable[priority] = wake_time;
-        overDelayBitTable |= task_bit;
-    } else {
-        wakeTicksTable[priority] = wake_time;
-        wakeDelayBitTable |= task_bit;
-    }
-
     delayBitTable |= task_bit;
     readyBitTable &= ~task_bit;
 
-    ExitCritical(basepri);
     SwitchTask();
+    ExitCritical(basepri);
+    
 }
 
 void CheckTicks(void) {
     tickBase += 1;
-    if (tickBase == 0) {
-        TicksTableSwitch();
-    }
 
-    uint32_t lookup_table = wakeDelayBitTable;
+    uint32_t lookup_table = delayBitTable;
 
     while (lookup_table != 0) {
         uint8_t i = FindHighestPriority(lookup_table);
@@ -343,9 +308,9 @@ void CheckTicks(void) {
 
         lookup_table &= ~task_bit;
 
-        if (tickBase >= wakeTicksTable[i]) {
+        if (IsTickReached(tickBase, wakeTicksTable[i])) {
             wakeTicksTable[i] = 0;
-            wakeDelayBitTable &= ~task_bit;
+
             delayBitTable &= ~task_bit;
             readyBitTable |= task_bit;
         }
