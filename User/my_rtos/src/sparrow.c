@@ -12,7 +12,7 @@
 #define MIN_SIZE            ((size_t)(heapStructSize << 1))
 
 #define CONFIG_MAX_PRIORI               32
-#define CONFIG_SHIELD_INTER_PRIORITY    191
+#define CONFIG_SHIELD_INTER_PRIORITY    191 // （0xBF）
 
 
 
@@ -49,7 +49,11 @@ uint32_t readyBitTable = 0;
 uint32_t nextTicks = ~(uint32_t)0;
 uint32_t tickBase = 0;
 
-uint32_t delayBitTable = 0;
+uint32_t delayBitTable = 0; // 总的延时表
+
+uint32_t wakeDelayBitTable = 0;
+uint32_t overDelayBitTable = 0;
+
 uint32_t ticksTable[CONFIG_MAX_PRIORI] = {0};
 uint32_t tickTableAssist[CONFIG_MAX_PRIORI] = {0};
 uint32_t *wakeTicksTable;
@@ -61,9 +65,13 @@ static inline void TicksTableInit(void) {
 } 
 
 static inline void TicksTableSwitch(void) {
-    uint32_t *temp = wakeTicksTable;
+    uint32_t *temp_table = wakeTicksTable;
     wakeTicksTable = overTicksTable;
-    overTicksTable = temp;
+    overTicksTable = temp_table;
+
+    uint32_t temp_bits = wakeDelayBitTable;
+    wakeDelayBitTable = overDelayBitTable;
+    overDelayBitTable = temp_bits;
 }
 
 
@@ -257,7 +265,7 @@ void SysTick_Handler(void) {
 
 
 
-__attribute__((always_inline)) static inline uint8_t FindHighestPriority(void) {
+__attribute__((always_inline)) static inline uint8_t FindHighestPriority(uint32_t table) {
     uint8_t top_zero_number;
     uint8_t temp;
 
@@ -266,28 +274,51 @@ __attribute__((always_inline)) static inline uint8_t FindHighestPriority(void) {
         "mov %1, #31\n"
         "sub %0, %1, %0\n"
         :"=r" (top_zero_number),"=r"(temp)
-        :"r" (readyBitTable)
+        :"r" (table)
     );
     return top_zero_number;
 }
 
 void TaskSwitchContext(void) {
-    uint8_t highest_priority = FindHighestPriority();
+
+    if(readyBitTable == 0) {
+        return;
+    }
+
+    uint8_t highest_priority = FindHighestPriority(readyBitTable);
     currentTCB = tcbTaskTable[highest_priority];
 }
 
 
 void TaskDelay(uint16_t _ticks) { // 也可以设置为 uint32_t 类型，逻辑不变
-    uint32_t wake_time = tickBase + _ticks;
+
     TCB_t *current_task = currentTCB;
+    uint8_t priority = (uint8_t)current_task->priority;
+    uint32_t task_bit = 1UL << priority;
+
+    if (_ticks == 0) {
+        SwitchTask();
+        return;
+    }
+    uint32_t wake_time = tickBase + _ticks;
+    
+    delayBitTable &= ~task_bit;
+    wakeDelayBitTable &= ~task_bit;
+    overDelayBitTable &= ~task_bit;
+
+    wakeTicksTable[priority] = 0;
+    overTicksTable[priority] = 0;
+
     if (wake_time < tickBase) {
-        overTicksTable[current_task->priority] = wake_time;
+        overTicksTable[priority] = wake_time;
+        overDelayBitTable |= task_bit;
     } else {
-        wakeTicksTable[current_task->priority] = wake_time;
+        wakeTicksTable[priority] = wake_time;
+        wakeDelayBitTable |= task_bit;
     }
 
-    delayBitTable |= (1UL << current_task->priority);
-    readyBitTable &= ~(1UL << current_task->priority);
+    delayBitTable |= task_bit;
+    readyBitTable &= ~task_bit;
 
     SwitchTask();
 }
@@ -298,11 +329,19 @@ void CheckTicks(void) {
         TicksTableSwitch();
     }
 
-    for (uint8_t i = 0; i < CONFIG_MAX_PRIORI; i++) {
-        if (wakeTicksTable[i] > 0 && wakeTicksTable[i] <= tickBase) {
+    uint32_t lookup_table = wakeDelayBitTable;
+
+    while (lookup_table != 0) {
+        uint8_t i = FindHighestPriority(lookup_table);
+        uint32_t task_bit = 1UL << i;
+
+        lookup_table &= ~task_bit;
+
+        if (tickBase >= wakeTicksTable[i]) {
             wakeTicksTable[i] = 0;
-            delayBitTable &= ~(1UL << i);
-            readyBitTable |= (1UL << i);
+            wakeDelayBitTable &= ~task_bit;
+            delayBitTable &= ~task_bit;
+            readyBitTable |= task_bit;
         }
     }
     SwitchTask();
