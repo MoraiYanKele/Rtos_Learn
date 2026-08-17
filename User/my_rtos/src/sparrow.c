@@ -6,17 +6,15 @@
 #include "main.h"
 #include "VOFA.h"
 
-#define CONFIG_HEAP         8 * 1024
-#define ALIGNMENT_MASK      (uintptr_t)0x07
+#define CONFIG_HEAP                     8 * 1024
+#define ALIGNMENT_MASK                  (uintptr_t)0x07
 
-#define MIN_SIZE            ((size_t)(heapStructSize << 1))
+#define MIN_SIZE                        ((size_t)(heapStructSize << 1))
 
 #define CONFIG_MAX_PRIORI               32
 
-#define CONFIG_MAX_SYSCALL_PRIORITY  11U
-#define CONFIG_SHIELD_INTER_PRIORITY \
-    (CONFIG_MAX_SYSCALL_PRIORITY << (8U - __NVIC_PRIO_BITS))
-
+#define CONFIG_MAX_SYSCALL_PRIORITY     11U
+#define CONFIG_SHIELD_INTER_PRIORITY    (CONFIG_MAX_SYSCALL_PRIORITY << (8U - __NVIC_PRIO_BITS))
 
 #define TICK_HALF_RANGE                 0x80000000UL
 
@@ -49,12 +47,16 @@ static uint8_t allHeap[CONFIG_HEAP];
 
 static void InsertFreeBlock(heap_node *insertBlockPtr);
 
-uint32_t readyBitTable = 0;
+uint32_t readyBitTable = 0; // 就绪表
+uint32_t delayBitTable = 0; // 延时表
+uint32_t suspendTable = 0;  // 挂起表
+uint32_t deadBitTable = 0;  // 死亡表
+uint32_t blockTable = 0;    // 阻塞表
+
 
 uint32_t nextTicks = ~(uint32_t)0;
 uint32_t tickBase = 0;
 
-uint32_t delayBitTable = 0; // 总的延时表
 
 uint32_t wakeTicksTable[CONFIG_MAX_PRIORI] = {0}; // 任务唤醒时间表
 
@@ -130,6 +132,9 @@ void *Heap_Malloc(size_t _want_size) {
 }
 static void InsertFreeBlock(heap_node* _insert_block_ptr);
 void Heap_Free(void *_free_ptr) {
+    if (_free_ptr == NULL) {
+        return;
+    }
     heap_node *link_ptr;
     uint8_t *free_ptr = (uint8_t *)_free_ptr;
 
@@ -186,7 +191,7 @@ uint32_t *PortInitialiseStack(uint32_t *_topOfStack,
 
     stack->xPSR = 0x01000000UL;
     stack->PC = ((uint32_t)code) & ((uint32_t)0xfffffffeUL);
-    stack->LR = (uint32_t)parameters;
+    stack->LR = (uint32_t)parameters; // 这里的parameters 和 self 均做调试用，与正常rtos中的不同
     stack->r0 = (uint32_t)self;
     (*self)->self_stack = stack;
 
@@ -197,6 +202,9 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 uint32_t _priority, 
                 TaskHandle_t *const self
     ) {
+    if (_priority >= CONFIG_MAX_PRIORI) {
+        return;
+    }
     uint32_t *top_stack = NULL;
     TCB_t *new_tcb = (TCB_t *)Heap_Malloc(sizeof(TCB_t));
     *self = (TCB_t *)new_tcb;
@@ -239,7 +247,11 @@ void SchedulerInit(void) {
 
 void SysTick_Handler(void) {
     uint32_t basepri = EnterCritical();
-    CheckTicks();
+
+    if (CheckState(leisureTask, suspendTable)) {
+        CheckTicks();
+    }
+
     ExitCritical(basepri);
 }
 
@@ -428,4 +440,39 @@ static inline void ExitCritical(uint32_t old_basepri) {
         : "r"(old_basepri)
         : "memory"
     );
+}
+
+
+uint32_t StateAdd(TCB_t *self, uint32_t *stateTable) {
+    uint32_t old_basepri = EnterCritical();
+    (*stateTable) |= (1UL << self->priority);
+    ExitCritical(old_basepri);
+    return *stateTable;
+}
+
+uint32_t StateRemove(TCB_t *self, uint32_t *stateTable) {
+    uint32_t old_basepri = EnterCritical();
+    (*stateTable) &= ~(1UL << self->priority);
+    ExitCritical(old_basepri);
+    return *stateTable;
+}
+
+uint8_t CheckState(TCB_t *self, uint32_t *stateTable) {
+    uint32_t old_basepri = EnterCritical();
+    uint32_t state = ((*stateTable) & (1UL << self->priority)) != 0;
+    ExitCritical(old_basepri);
+    return (uint8_t)state;
+}
+
+Class (Semaphore_struct) {
+    uint8_t value;
+    uint32_t block;
+};
+
+
+Semaphore_struct *SemaphoreCreate(uint8_t _value) {
+    Semaphore_struct *semphore = Heap_Malloc(sizeof(Semaphore_struct));
+    semphore->block = 0;
+    semphore->value = _value;
+    return semphore;
 }
