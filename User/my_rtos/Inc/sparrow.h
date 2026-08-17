@@ -17,8 +17,7 @@
 #define CONFIG_TICK_RATE_HZ             ((uint32_t) 1000)
 
 //  触发PendSV中断
-#define SwitchTask() \
-*( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
+
 
 Class (Stack_Register) {
         //manual stacking

@@ -6,6 +6,9 @@
 #include "main.h"
 #include "VOFA.h"
 
+#define true    1
+#define false   0
+
 #define CONFIG_HEAP                     8 * 1024
 #define ALIGNMENT_MASK                  (uintptr_t)0x07
 
@@ -18,11 +21,21 @@
 
 #define TICK_HALF_RANGE                 0x80000000UL
 
-
 #define Class(class)            \
     typedef struct class class; \
     struct class
 
+
+// #define SwitchTask() \
+// *( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
+
+__attribute__((always_inline))
+static inline void SwitchTask(void) {
+    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+
+    __DSB();
+    __ISB();
+}
 
 
 Class(heap_node) {
@@ -248,7 +261,9 @@ void SchedulerInit(void) {
 void SysTick_Handler(void) {
     uint32_t basepri = EnterCritical();
 
-    if (CheckState(leisureTask, suspendTable)) {
+    uint32_t temp = suspendTable;
+    temp &= 1;
+    if (temp != 1) {
         CheckTicks();
     }
 
@@ -305,9 +320,13 @@ void TaskDelay(uint16_t _ticks) {
     readyBitTable &= ~task_bit;
 
     SwitchTask();
-    ExitCritical(basepri);
-    
+    ExitCritical(basepri);   
 }
+
+// static void TaskDelayLocked(TCB_t *task, uint32_t ticks) {
+//     uint32_t piorityBit = 1UL << task->priority;
+//     uint32_t wakeTime = tickBase + ()
+// }
 
 void CheckTicks(void) {
     tickBase += 1;
@@ -464,15 +483,81 @@ uint8_t CheckState(TCB_t *self, uint32_t *stateTable) {
     return (uint8_t)state;
 }
 
-Class (Semaphore_struct) {
+Class (Semaphore_t) {
     uint8_t value;
     uint32_t block;
 };
 
 
-Semaphore_struct *SemaphoreCreate(uint8_t _value) {
-    Semaphore_struct *semphore = Heap_Malloc(sizeof(Semaphore_struct));
+
+Semaphore_t *SemaphoreCreate(uint8_t _value) {
+    Semaphore_t *semphore = Heap_Malloc(sizeof(Semaphore_t));
     semphore->block = 0;
     semphore->value = _value;
     return semphore;
+}
+
+void SemaphoreDelete(Semaphore_t *semaphore) {
+    Heap_Free(semaphore);
+}
+
+uint8_t SemaphoreRelease(Semaphore_t *semaphore) {
+    uint32_t old_basepri = EnterCritical();
+    
+    if (semaphore->block) {
+        uint8_t i = FindHighestPriority(semaphore->block);
+        semaphore->block &= ~(1UL << i);
+        StateRemove(tcbTaskTable[i], &blockTable);
+        StateRemove(tcbTaskTable[i], &delayBitTable);
+        wakeTicksTable[i] = 0;
+        StateAdd(tcbTaskTable[i], &readyBitTable);
+    } else {
+        semaphore->value += 1;
+    }
+    SwitchTask();
+
+    ExitCritical(old_basepri);
+    return true;
+}
+
+
+uint8_t SemaphoreTake(Semaphore_t *semaphore, uint32_t ticks) {
+    uint32_t old_basepri = EnterCritical();
+
+    if (semaphore == NULL) {
+        ExitCritical(old_basepri);
+        return false;
+    }
+
+    if (semaphore->value > 0) {
+        semaphore->value -= 1;
+        ExitCritical(old_basepri);
+        return true;
+    }
+
+    if (ticks == 0) {
+        ExitCritical(old_basepri);
+        return false;
+    }
+
+    TCB_t *task = currentTCB;
+    StateAdd(task, &blockTable);
+    StateAdd(task, &semaphore->block);
+
+    wakeTicksTable[task->priority] = tickBase + ticks;
+    StateAdd(task, &delayBitTable);
+
+    StateRemove(task, &readyBitTable);
+    SwitchTask();
+    ExitCritical(old_basepri);
+    
+    old_basepri = EnterCritical();
+    if (CheckState(task, &blockTable)) {
+        StateRemove(task, &blockTable);
+        StateRemove(task, &semaphore->block);
+        ExitCritical(old_basepri);
+        return false;
+    }
+    ExitCritical(old_basepri);
+    return true;
 }
