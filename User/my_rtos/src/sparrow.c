@@ -231,7 +231,7 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
     top_stack = (uint32_t *)((uint32_t)top_stack & ~(uint32_t)ALIGNMENT_MASK);
     new_tcb->top_of_stack = PortInitialiseStack(top_stack, taskCode, parameters, self);
 
-    currentTCB = new_tcb;
+    // currentTCB = new_tcb;
 
     readyBitTable |= (1UL << _priority);
 }
@@ -407,6 +407,13 @@ __attribute__( ( naked ) )  void  xPortPendSVHandler( void ) {
 
 __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
 {
+
+    TaskSwitchContext(); // 所欲哦初始任务已经创建完成，在这里主动选择最高优先级
+
+    if (currentTCB == NULL) {
+        Error_Handler();
+    }
+
     ( *( ( volatile uint32_t * ) 0xe000ed20 ) ) |= ( ( ( uint32_t ) 255UL ) << 16UL );
     ( *( ( volatile uint32_t * ) 0xe000ed20 ) ) |= ( ( ( uint32_t ) 255UL ) << 24UL );
 
@@ -441,7 +448,7 @@ static inline uint32_t EnterCritical(void) {
         "msr basepri_max, %1   \n"
         "dsb                   \n"
         "isb                   \n"
-        : "=r"(old_basepri)
+        : "=&r"(old_basepri)
         : "r"(new_basepri)
         : "memory"
     );
@@ -483,15 +490,14 @@ uint8_t CheckState(TCB_t *self, uint32_t *stateTable) {
     return (uint8_t)state;
 }
 
-Class (Semaphore_t) {
-    uint8_t value;
-    uint32_t block;
-};
 
 
 
 Semaphore_t *SemaphoreCreate(uint8_t _value) {
     Semaphore_t *semphore = Heap_Malloc(sizeof(Semaphore_t));
+    if (semphore == NULL) {
+        return NULL;
+    }
     semphore->block = 0;
     semphore->value = _value;
     return semphore;

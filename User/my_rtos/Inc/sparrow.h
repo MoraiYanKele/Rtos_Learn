@@ -47,6 +47,12 @@ Class (TCB_t) {
     Stack_Register *self_stack;  //Save the status of the stack in the task !You can use gdb to debug it!
 };
 
+Class (Semaphore_t) {
+    uint8_t value;
+    uint32_t block;
+};
+
+
 typedef  TCB_t         *TaskHandle_t;
 typedef void (* TaskFunction_t)( void * );
 
@@ -60,7 +66,9 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
 void TaskDelay(uint16_t _ticks);
 __attribute__((always_inline)) static inline void ExitCritical(uint32_t old_basepri);
 __attribute__( ( always_inline ) ) static inline uint32_t EnterCritical(void);
-
-
+Semaphore_t *SemaphoreCreate(uint8_t _value);
+void SemaphoreDelete(Semaphore_t *semaphore);
+uint8_t SemaphoreRelease(Semaphore_t *semaphore);
+uint8_t SemaphoreTake(Semaphore_t *semaphore, uint32_t ticks);
 /* private */ 
 void CheckTicks(void);
