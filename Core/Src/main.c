@@ -63,14 +63,13 @@ void SystemClock_Config(void);
 void Task1(void *parameters) {
     Printf("Task 1 is running\n");
     while (1) {
-        uint8_t res = SemaphoreTake(testSemphore, 1000);
+        uint8_t res = SemaphoreTake(testSemphore, 100);
         if (res) {
             Printf("receive semphore\n");
         } else {
             Printf("no\n");
         }
         
-        TaskDelay(10);
     }
 }
 void Task2(void *parameters) {

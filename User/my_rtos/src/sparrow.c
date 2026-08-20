@@ -25,9 +25,8 @@
     typedef struct class class; \
     struct class
 
-
-// #define SwitchTask() \
-// *( ( volatile uint32_t * ) 0xe000ed04 ) = ( 1UL << 28UL );
+static inline uint32_t EnterCritical(void);
+static inline void ExitCritical(uint32_t old_basepri);
 
 __attribute__((always_inline))
 static inline void SwitchTask(void) {
