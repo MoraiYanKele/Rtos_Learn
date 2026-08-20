@@ -54,39 +54,51 @@ static uint16_t ws2812_dma_buffer[WS2812_DMA_BUFFER_LENGTH(LED_NUM)];
 
 TaskHandle_t task1_handle = NULL;
 TaskHandle_t task2_handle = NULL;
+Semaphore_t *testSemphore = NULL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void Task1(void *parameters) {
-  while (1) {
     Printf("Task 1 is running\n");
-    TaskDelay(1000);
-  }
+    while (1) {
+        uint8_t res = SemaphoreTake(testSemphore, 1000);
+        if (res) {
+            Printf("receive semphore\n");
+        } else {
+            Printf("no\n");
+        }
+        
+        TaskDelay(10);
+    }
 }
 void Task2(void *parameters) {
-  while (1) {
-    Printf("Task 2 is running\n");
-    TaskDelay(1000);
-  }
+    
+    Printf("Task 2 running\n");
+    while (1) {
+        SemaphoreRelease(testSemphore);
+        TaskDelay(1000);
+    }
 }
 
 void App() {
-  TaskCreate(
-    Task1,
-    128,
-    NULL,
-    1,
-    &task1_handle
-  );
-  TaskCreate(
-    Task2,
-    128,
-    NULL,
-    8,
-    &task2_handle
-  );
+    TaskCreate(
+        Task1,
+        128,
+        NULL,
+        1,
+        &task1_handle
+    );
+    TaskCreate(
+        Task2,
+        128,
+        NULL,
+        8,
+        &task2_handle
+    );
+
+    testSemphore = SemaphoreCreate(1);
 }
 /* USER CODE END PFP */
 
