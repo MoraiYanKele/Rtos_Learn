@@ -47,6 +47,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/my_rtos/src/sparrow.c
     User/Lib/Src/ws2812.c
     User/Lib/Src/VOFA.c
+    User/my_rtos/src/schedule.c
     # Add user sources here
 )
 

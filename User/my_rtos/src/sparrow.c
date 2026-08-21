@@ -203,11 +203,10 @@ uint32_t *PortInitialiseStack(uint32_t *_topOfStack,
 
     stack->xPSR = 0x01000000UL;
     stack->PC = ((uint32_t)code) & ((uint32_t)0xfffffffeUL);
-    stack->LR = (uint32_t)parameters; // 这里的parameters 和 self 均做调试用，与正常rtos中的不同
-    stack->r0 = (uint32_t)self;
+    stack->LR = (uint32_t)TaskExitError;
+    stack->r0 = (uint32_t)parameters;
     (*self)->self_stack = stack;
-
-    return top_of_stack;
+    return top_of_stack; // 
 }
 void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth, 
                 void *const parameters,
@@ -215,6 +214,12 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 TaskHandle_t *const self
     ) {
     if (_priority >= CONFIG_MAX_PRIORI) {
+        return;
+    }
+    if (self == NULL) {
+        return;
+    }
+    if (taskCode == NULL) {
         return;
     }
     uint32_t *top_stack = NULL;
@@ -355,19 +360,19 @@ void CheckTicks(void) {
 
 __attribute__((naked)) void vPortSVCHandler(void) {
     __asm volatile (
-            " ldr r3, pxCurrentTCBConst2 	\n"
-            " ldr r1, [r3] 			\n"
-            " ldr r0, [r1] 			\n"/* Copy the top of stack from the TCB. */
-            " ldmia r0!, {r4-r11} 	\n"/* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
-            " msr psp, r0			\n"/* Restore the task stack pointer. */
-            "isb                        \n"
-            " mov r0, #0			\n"
-            " msr basepri, r0		\n"/* Clear the base priority register. */
-            " orr r14, #0xd			\n"/* Return from interrupt uses the PSP. */
-            " bx r14					\n"
-            ".align 4				\n"
-            "pxCurrentTCBConst2: .word currentTCB   \n"
-            );
+        " ldr r3, pxCurrentTCBConst2 	\n"
+        " ldr r1, [r3] 			\n"
+        " ldr r0, [r1] 			\n"/* Copy the top of stack from the TCB. */
+        " ldmia r0!, {r4-r11} 	\n"/* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
+        " msr psp, r0			\n"/* Restore the task stack pointer. */
+        "isb                    \n"
+        " mov r0, #0			\n"
+        " msr basepri, r0		\n"/* Clear the base priority register. */
+        " orr r14, #0xd			\n"/* Return from interrupt uses the PSP. */
+        " bx r14			    \n"
+        ".align 4				\n"
+        "pxCurrentTCBConst2: .word currentTCB   \n"
+    );
 }
 
 __attribute__( ( naked ) )  void  xPortPendSVHandler( void ) {
@@ -565,4 +570,9 @@ uint8_t SemaphoreTake(Semaphore_t *semaphore, uint32_t ticks) {
     }
     ExitCritical(old_basepri);
     return true;
+}
+
+static void TaskExitError(void) {
+    __disable_irq();
+    Error_Handler();
 }
