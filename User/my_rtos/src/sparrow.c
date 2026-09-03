@@ -59,6 +59,8 @@ static uint8_t allHeap[CONFIG_HEAP];
 
 static void InsertFreeBlock(heap_node *insertBlockPtr);
 
+static void TaskExitError(void);
+
 uint32_t readyBitTable = 0; // 就绪表
 uint32_t delayBitTable = 0; // 延时表
 uint32_t suspendTable = 0;  // 挂起表
@@ -274,21 +276,8 @@ void SysTick_Handler(void) {
     ExitCritical(basepri);
 }
 
-
-
-
-__attribute__((always_inline)) static inline uint8_t FindHighestPriority(uint32_t table) {
-    uint8_t top_zero_number;
-    uint8_t temp;
-
-    __asm volatile (
-        "clz %0, %2\n"
-        "mov %1, #31\n"
-        "sub %0, %1, %0\n"
-        :"=r" (top_zero_number),"=r"(temp)
-        :"r" (table)
-    );
-    return top_zero_number;
+TaskHandle_t GetTaskHandle(uint8_t priority) {
+    return tcbTaskTable[priority];
 }
 
 void TaskSwitchContext(void) {
