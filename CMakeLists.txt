@@ -32,7 +32,10 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+add_executable(${CMAKE_PROJECT_NAME}
+    User/my_rtos/Inc/config.h
+    User/my_rtos/src/heap.c
+    User/my_rtos/Inc/heap.h)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -50,6 +53,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/my_rtos/src/schedule.c
     User/my_rtos/src/queue.c
     User/my_rtos/Inc/schedule.h
+    User/my_rtos/src/heap.c
     # Add user sources here
 )
 
