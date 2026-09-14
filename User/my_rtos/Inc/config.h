@@ -7,3 +7,9 @@
 #define CONFIG_SYSTICK_CLOCK_HZ     ((unsigned long)168000000)
 #define CONFIG_TICK_RATE_HZ         ((uint32_t)1000)
 
+#define true    1
+#define false   0
+
+#define Class(class)            \
+    typedef struct class class; \
+    struct class

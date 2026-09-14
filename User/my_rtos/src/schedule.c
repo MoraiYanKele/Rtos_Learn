@@ -5,13 +5,27 @@ static void TaskExitError(void) {
     Error_Handler();
 }
 
+uint32_t nextTicks = ~(uint32_t)0;
+uint32_t tickBase = 0;
 
-
+TaskHandle_t tcbTaskTable[CONFIG_MAX_PRIORI] = { NULL };
+uint32_t wakeTicksTable[CONFIG_MAX_PRIORI] = {0}; // 任务唤醒时间表
 uint32_t stateTable[5] = {0, 0, 0, 0, 0};
 
 static TaskHandle_t taskTcbTable[CONFIG_MAX_PRIORI] = {NULL};
 static TaskHandle_t leisureTcb = NULL;
-__attribute__((used)) TCB_t * volatile currentTCB = NULL:
+__attribute__((used)) TCB_t * volatile currentTCB = NULL;
+
+
+__attribute__((always_inline))
+static inline void SwitchTask(void) {
+    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+
+    __DSB();
+    __ISB();
+}
+
+
 __attribute__((always_inline))
 static inline uint32_t EnterCritical(void) {
     uint32_t old_basepri;
@@ -154,7 +168,7 @@ void TaskDelay(uint16_t _ticks) {
 
     wakeTicksTable[priority] = tickBase + (uint32_t)_ticks;
     
-    delayBitTable |= task_bit;
+    stateTable[DELAY] |= task_bit;
     stateTable[READY] &= ~task_bit;
 
     SwitchTask();
@@ -169,7 +183,7 @@ void TaskDelay(uint16_t _ticks) {
 void CheckTicks(void) {
     tickBase += 1;
 
-    uint32_t lookup_table = delayBitTable;
+    uint32_t lookup_table = stateTable[DELAY];
 
     while (lookup_table != 0) {
         uint8_t i = FindHighestPriority(lookup_table);
@@ -180,7 +194,7 @@ void CheckTicks(void) {
         if (IsTickReached(tickBase, wakeTicksTable[i])) {
             wakeTicksTable[i] = 0;
 
-            delayBitTable &= ~task_bit;
+            stateTable[DELAY] &= ~task_bit;
             stateTable[READY] |= task_bit;
         }
     }
@@ -275,4 +289,26 @@ __attribute__( ( always_inline ) ) inline void SchedulerStart( void )
             " .ltorg				\n"
             );
 }
+TaskHandle_t GetCurrentTCB() {
+    return currentTCB;
+}
+uint32_t StateAdd(TCB_t *self, uint32_t *stateTable) {
+    uint32_t old_basepri = EnterCritical();
+    (*stateTable) |= (1UL << self->priority);
+    ExitCritical(old_basepri);
+    return *stateTable;
+}
 
+uint32_t StateRemove(TCB_t *self, uint32_t *stateTable) {
+    uint32_t old_basepri = EnterCritical();
+    (*stateTable) &= ~(1UL << self->priority);
+    ExitCritical(old_basepri);
+    return *stateTable;
+}
+
+uint8_t CheckState(TCB_t *self, uint32_t *stateTable) {
+    uint32_t old_basepri = EnterCritical();
+    uint32_t state = ((*stateTable) & (1UL << self->priority)) != 0;
+    ExitCritical(old_basepri);
+    return (uint8_t)state;
+}

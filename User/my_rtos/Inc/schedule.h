@@ -6,13 +6,16 @@
 #include "config.h"
 #include <stdint.h>
 #include <stdlib.h> 
+#include "heap.h"
 
 #define CONFIG_MAX_PRIORI           32
 #define CONFIG_MAX_SYSCALL_PRIORITY     11U
 #define CONFIG_SHIELD_INTER_PRIORITY \
-        (CONFIG_MAX_SYSCALL_PRIORITY << (8U << __NVIC_PRIO_BITS))
+        (CONFIG_MAX_SYSCALL_PRIORITY << (8U - __NVIC_PRIO_BITS))
 
 #define ALIGNMENT_MASK              (uintptr_t)0x07
+
+#define TICK_HALF_RANGE                 0x80000000UL
 
 enum State {
     READY   = 0, // 就绪表
@@ -22,9 +25,7 @@ enum State {
     BLOCK   = 4  // 阻塞表
 };
 
-#define Class(class)            \
-    typedef struct class class; \
-    struct class
+
 
 
 Class (Stack_Register) {
@@ -73,6 +74,10 @@ __attribute__((always_inline)) inline uint8_t FindHighestPriority(uint32_t table
     return top_zero_number;
 }
 
+extern uint32_t tickBase; 
+extern uint32_t wakeTicksTable[CONFIG_MAX_PRIORI]; // 任务唤醒时间表
+extern uint32_t stateTable[5];
+
 TaskHandle_t GetTaskHandle(uint8_t priority); 
 void SchedulerInit(void);
 void SchedulerStart(void);
@@ -83,3 +88,7 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 
 void TaskDelay(uint16_t _ticks);
 void CheckTicks(void);
+uint32_t StateAdd(TCB_t *self, uint32_t *stateTable);
+uint32_t StateRemove(TCB_t *self, uint32_t *stateTable);
+uint8_t CheckState(TCB_t *self, uint32_t *stateTable);
+TaskHandle_t GetCurrentTCB();
