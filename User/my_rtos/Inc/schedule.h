@@ -74,6 +74,44 @@ __attribute__((always_inline)) inline uint8_t FindHighestPriority(uint32_t table
     return top_zero_number;
 }
 
+__attribute__((always_inline))
+static inline void SwitchTask(void) {
+    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+
+    __DSB();
+    __ISB();
+}
+__attribute__((always_inline))
+static inline uint32_t EnterCritical(void) {
+    uint32_t old_basepri;
+    uint32_t new_basepri = CONFIG_SHIELD_INTER_PRIORITY;
+
+    __asm volatile(
+        "mrs %0, basepri       \n"
+        "msr basepri_max, %1   \n"
+        "dsb                   \n"
+        "isb                   \n"
+        : "=&r"(old_basepri)
+        : "r"(new_basepri)
+        : "memory"
+    );
+
+    return old_basepri;
+}
+
+__attribute__((always_inline))
+static inline void ExitCritical(uint32_t old_basepri) {
+    __asm volatile(
+        "msr basepri, %0       \n"
+        "dsb                   \n"
+        "isb                   \n"
+        :
+        : "r"(old_basepri)
+        : "memory"
+    );
+}
+
+
 extern uint32_t tickBase; 
 extern uint32_t wakeTicksTable[CONFIG_MAX_PRIORI]; // 任务唤醒时间表
 extern uint32_t stateTable[5];

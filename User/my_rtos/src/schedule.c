@@ -17,45 +17,6 @@ static TaskHandle_t leisureTcb = NULL;
 __attribute__((used)) TCB_t * volatile currentTCB = NULL;
 
 
-__attribute__((always_inline))
-static inline void SwitchTask(void) {
-    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
-
-    __DSB();
-    __ISB();
-}
-
-
-__attribute__((always_inline))
-static inline uint32_t EnterCritical(void) {
-    uint32_t old_basepri;
-    uint32_t new_basepri = CONFIG_SHIELD_INTER_PRIORITY;
-
-    __asm volatile(
-        "mrs %0, basepri       \n"
-        "msr basepri_max, %1   \n"
-        "dsb                   \n"
-        "isb                   \n"
-        : "=&r"(old_basepri)
-        : "r"(new_basepri)
-        : "memory"
-    );
-
-    return old_basepri;
-}
-
-__attribute__((always_inline))
-static inline void ExitCritical(uint32_t old_basepri) {
-    __asm volatile(
-        "msr basepri, %0       \n"
-        "dsb                   \n"
-        "isb                   \n"
-        :
-        : "r"(old_basepri)
-        : "memory"
-    );
-}
-
 static uint32_t *PortInitialiseStack(uint32_t *topOfStack, 
                                      TaskFunction_t code, 
                                      void *parameters,
