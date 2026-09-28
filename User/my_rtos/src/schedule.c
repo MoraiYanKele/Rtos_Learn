@@ -8,7 +8,6 @@ static void TaskExitError(void) {
 uint32_t nextTicks = ~(uint32_t)0;
 uint32_t tickBase = 0;
 
-TaskHandle_t tcbTaskTable[CONFIG_MAX_PRIORI] = { NULL };
 uint32_t wakeTicksTable[CONFIG_MAX_PRIORI] = {0}; // 任务唤醒时间表
 uint32_t stateTable[5] = {0, 0, 0, 0, 0};
 
@@ -107,7 +106,7 @@ void TaskSwitchContext(void) {
     }
 
     uint8_t highest_priority = FindHighestPriority(stateTable[READY]);
-    currentTCB = tcbTaskTable[highest_priority];
+    currentTCB = taskTcbTable[highest_priority];
 }
 
 
