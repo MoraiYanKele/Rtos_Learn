@@ -53,10 +53,9 @@ void WriteToQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
         StateAdd(task, &stateTable[READY]);
         if (priority > currentTcbPriority) {
             SwitchTask();
-        }
-
-        queue->messageNumber++;
+        }        
     }
+    queue->messageNumber++;
 }
 
 // 读取队列
