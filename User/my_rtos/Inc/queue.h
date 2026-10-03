@@ -15,6 +15,6 @@ Class (Queue_t) {
 
 Queue_t *QueueCrate(uint32_t queueLength, uint32_t queueSize);
 
-void QueueDelete(Queue_t *queue);
+uint8_t QueueDelete(Queue_t *queue);
 
 void WriteToQueue(Queue_t *queue, void *buff, uint32_t curreentTcbPriority);

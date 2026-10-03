@@ -25,7 +25,13 @@ enum State {
     BLOCK   = 4  // 阻塞表
 };
 
-
+typedef enum {
+    WAIT_NONE,
+    WAIT_PENDING,       // 正在等待
+    WAIT_SIGNALED,      // 通知唤醒
+    WAIT_TIMEOUT,       // 等待超时
+//  可加取消原因
+} WaitResult_t;
 
 
 Class (Stack_Register) {
@@ -54,6 +60,8 @@ Class (TCB_t) {
     unsigned long priority;
     uint32_t *stack;
     Stack_Register *self_stack;
+    uint32_t *waitTable; // 当前对象的等待位图
+    WaitResult_t waitResult;
 };
 
 typedef TCB_t *TaskHandle_t;
@@ -130,3 +138,4 @@ uint32_t StateAdd(TCB_t *self, uint32_t *stateTable);
 uint32_t StateRemove(TCB_t *self, uint32_t *stateTable);
 uint8_t CheckState(TCB_t *self, uint32_t *stateTable);
 TaskHandle_t GetCurrentTCB();
+void TaskCompleteWaitLocked(TCB_t *task, WaitResult_t result);

@@ -59,7 +59,8 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
     top_stack = new_tcb->stack + (stackDepth - (uint32_t)1);
     top_stack = (uint32_t *)((uint32_t)top_stack & ~(uint32_t)ALIGNMENT_MASK);
     new_tcb->top_of_stack = PortInitialiseStack(top_stack, taskCode, parameters, self);
-
+    new_tcb->waitTable = NULL;
+    new_tcb->waitResult = WAIT_NONE;
     stateTable[READY] |= (1UL << priority);
 }
 
@@ -152,10 +153,15 @@ void CheckTicks(void) {
         lookup_table &= ~task_bit;
 
         if (IsTickReached(tickBase, wakeTicksTable[i])) {
-            wakeTicksTable[i] = 0;
+            TaskHandle_t task = GetTaskHandle(i);
 
-            stateTable[DELAY] &= ~task_bit;
-            stateTable[READY] |= task_bit;
+            if (task->waitResult == WAIT_PENDING) {
+                TaskCompleteWaitLocked(task, WAIT_TIMEOUT);
+            } else {
+                wakeTicksTable[i] = 0;
+                stateTable[DELAY] &= ~task_bit;
+                stateTable[READY] |= task_bit;
+            }
         }
     }
     SwitchTask();
@@ -271,4 +277,35 @@ uint8_t CheckState(TCB_t *self, uint32_t *stateTable) {
     uint32_t state = ((*stateTable) & (1UL << self->priority)) != 0;
     ExitCritical(old_basepri);
     return (uint8_t)state;
+}
+
+/**
+ * @brief 结束任务的等待，清理等待状态并将任务置为就绪。
+ * @param task   等待结束的任务控制块，必须为有效指针。
+ * @param result 本次等待的最终结果，如 WAIT_SIGNALED 或 WAIT_TIMEOUT。
+ * @note 调用者必须已进入临界区；本函数不自行加锁，也不触发任务切换。
+ */
+void TaskCompleteWaitLocked(TCB_t *task, WaitResult_t result) {
+    /* 仅处理仍在等待的任务，避免重复完成同一次等待。 */
+    if (task->waitResult != WAIT_PENDING) {
+        return;
+    }
+
+    /* 各状态表以任务优先级对应的位表示该任务。 */
+    uint32_t bit = 1UL << task->priority;
+
+    if (task->waitTable != NULL) {
+        /* 从所属对象的等待位图中移除任务，并解除关联。 */
+        *task->waitTable &= ~bit;
+        task->waitTable = NULL;
+    }
+
+    /* 清除阻塞和延时标记，同时取消已登记的唤醒时间。 */
+    stateTable[BLOCK] &= ~bit;
+    stateTable[DELAY] &= ~bit;
+    wakeTicksTable[task->priority] = 0;
+
+    /* 保存等待结果，供任务恢复执行后读取，并允许调度器再次选中它。 */
+    task->waitResult = result;
+    stateTable[READY] |= bit;
 }

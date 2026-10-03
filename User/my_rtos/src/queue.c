@@ -28,8 +28,18 @@ Queue_t *QueueCrate(uint32_t queueLength, uint32_t queueSize) {
     return queue;
 }
 
-void QueueDelete(Queue_t *queue) {
+uint8_t QueueDelete(Queue_t *queue) {
+    if (queue == NULL) {
+        return false;
+    }
+    uint32_t basepri = EnterCritical();
+    if (queue->receiveTable != 0 || queue->sendTable != 0) {
+        ExitCritical(basepri);
+        return false;
+    }
     Heap_Free(queue);
+    ExitCritical(basepri);
+    return true;
 }
 
 #define FindTopTcbIndex FindHighestPriority
@@ -47,10 +57,8 @@ void WriteToQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
         uint8_t priority = FindTopTcbIndex(queue->receiveTable);
         TaskHandle_t task = GetTaskHandle(priority);
 
-        StateRemove(task, &queue->receiveTable);
-        StateRemove(task, &stateTable[BLOCK]);
-        StateRemove(task, &stateTable[DELAY]);
-        StateAdd(task, &stateTable[READY]);
+        TaskCompleteWaitLocked(task, WAIT_SIGNALED);
+
         if (priority > currentTcbPriority) {
             SwitchTask();
         }        
@@ -71,10 +79,8 @@ void ExtractFromQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
         uint8_t priority = FindTopTcbIndex(queue->sendTable);
         TaskHandle_t task = GetTaskHandle(priority);
 
-        StateRemove(task, &queue->sendTable);
-        StateRemove(task, &stateTable[DELAY]);
-        StateRemove(task, &stateTable[BLOCK]);
-        StateAdd(task, &stateTable[READY]);
+        TaskCompleteWaitLocked(task, WAIT_SIGNALED);
+
         if (priority > currentTcbPriority) {
             SwitchTask();
         }
@@ -99,7 +105,10 @@ uint8_t QueueSend(Queue_t *queue, void *buff, uint32_t ticks) {
         return false;
     }
 
-    StateAdd(cur_tcb, &queue->sendTable);
+    cur_tcb->waitTable = &queue->sendTable;
+    cur_tcb->waitResult = WAIT_PENDING;
+
+    StateAdd(cur_tcb, cur_tcb->waitTable);
     StateAdd(cur_tcb, &stateTable[BLOCK]);
     wakeTicksTable[cur_prio] = tickBase + ticks;
     StateAdd(cur_tcb, &stateTable[DELAY]);
@@ -109,12 +118,12 @@ uint8_t QueueSend(Queue_t *queue, void *buff, uint32_t ticks) {
     ExitCritical(basepri);
 
     basepri = EnterCritical();
-    if (CheckState(cur_tcb, &stateTable[BLOCK])) {
-        StateRemove(cur_tcb, &queue->sendTable);
-        StateRemove(cur_tcb, &stateTable[BLOCK]);
-        StateRemove(cur_tcb, &stateTable[DELAY]);
+    WaitResult_t result = cur_tcb->waitResult;
+    cur_tcb->waitResult = WAIT_NONE;
+
+    if (result == WAIT_TIMEOUT) {
         ExitCritical(basepri);
-        return false;        
+        return false;
     } else {
         WriteToQueue(queue, buff, cur_prio);
         ExitCritical(basepri);
@@ -138,7 +147,10 @@ uint8_t QueueReceive(Queue_t *queue, void *buff, uint32_t ticks) {
         return false;
     }
 
-    StateAdd(cur_tcb, &queue->receiveTable);
+    cur_tcb->waitTable = &queue->receiveTable;
+    cur_tcb->waitResult = WAIT_PENDING;
+
+    StateAdd(cur_tcb, cur_tcb->waitTable);
     StateAdd(cur_tcb, &stateTable[BLOCK]);
     wakeTicksTable[cur_prio] = tickBase + ticks;
     StateAdd(cur_tcb, &stateTable[DELAY]);
@@ -148,12 +160,13 @@ uint8_t QueueReceive(Queue_t *queue, void *buff, uint32_t ticks) {
     ExitCritical(basepri);
 
     basepri = EnterCritical();
-    if (CheckState(cur_tcb, &stateTable[BLOCK])) {
-        StateRemove(cur_tcb, &queue->receiveTable);
-        StateRemove(cur_tcb, &stateTable[BLOCK]);
-        StateRemove(cur_tcb, &stateTable[DELAY]);
+
+    WaitResult_t result = cur_tcb->waitResult;
+    cur_tcb->waitResult = WAIT_NONE;
+
+    if (result == WAIT_TIMEOUT) {
         ExitCritical(basepri);
-        return false;        
+        return false;
     } else {
         ExtractFromQueue(queue, buff, cur_prio);
         ExitCritical(basepri);
