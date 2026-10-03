@@ -54,6 +54,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/my_rtos/src/queue.c
     User/my_rtos/Inc/schedule.h
     User/my_rtos/src/heap.c
+    User/my_rtos/src/semaphore.c
     # Add user sources here
 )
 
