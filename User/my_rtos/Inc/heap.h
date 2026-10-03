@@ -7,8 +7,6 @@
 
 #define MIN_SIZE                        ((size_t)(heapStructSize << 1))
 
-
-
 Class(heap_node) {
     heap_node *next;
     size_t blockSize;
@@ -19,12 +17,6 @@ Class(xheap) {
     heap_node *tail;
     size_t allSize;
 };
-
-xheap theHeap = {
-    .tail = NULL,
-    .allSize = CONFIG_HEAP,
-};
-
 
 void Heap_Init(void);
 void *Heap_Malloc(size_t _want_size);

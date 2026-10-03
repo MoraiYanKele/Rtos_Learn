@@ -1,5 +1,10 @@
 #include "heap.h"
 
+xheap theHeap = {
+    .tail = NULL,
+    .allSize = CONFIG_HEAP,
+};
+
 static const size_t heapStructSize = (sizeof(heap_node) + (size_t)(ALIGNMENT_MASK)) & ~((size_t)ALIGNMENT_MASK);
 
 static uint8_t allHeap[CONFIG_HEAP];
