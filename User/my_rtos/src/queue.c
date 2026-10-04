@@ -47,6 +47,7 @@ uint8_t QueueDelete(Queue_t *queue) {
 // 写入队列
 void WriteToQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
     memcpy((void *)queue->writePoint, buff, (size_t)queue->nodeSize);
+    queue->messageNumber++;
 
     queue->writePoint += queue->nodeSize;
     if (queue->writePoint >= queue->endPoint) {
@@ -63,7 +64,6 @@ void WriteToQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
             SwitchTask();
         }        
     }
-    queue->messageNumber++;
 }
 
 // 读取队列
@@ -74,6 +74,7 @@ void ExtractFromQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
     }
 
     memcpy(buff, (void *)queue->readPoint, (size_t)queue->nodeSize);
+    queue->messageNumber--;
 
     if (queue->sendTable != 0) {
         uint8_t priority = FindTopTcbIndex(queue->sendTable);
@@ -86,7 +87,6 @@ void ExtractFromQueue(Queue_t *queue, void *buff, uint32_t currentTcbPriority) {
         }
     }
 
-    queue->messageNumber--;
 }
 
 uint8_t QueueSend(Queue_t *queue, void *buff, uint32_t ticks) {
