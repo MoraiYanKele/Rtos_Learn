@@ -26,7 +26,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
-#include "sparrow.h"
+#include "semaphore.h"
+#include "schedule.h"
+#include "queue.h"
 #include "VOFA.h"
 /* USER CODE END Includes */
 
