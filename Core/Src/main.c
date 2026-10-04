@@ -26,7 +26,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
-#include "sparrow.h"
+#include "schedule.h"
+#include "semaphore.h"
+#ifdef RTOS_SELF_TEST
+#include "rtos_test.h"
+#endif
 #include "VOFA.h"
 /* USER CODE END Includes */
 
@@ -48,6 +52,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+#ifndef RTOS_SELF_TEST
 WS2812 ws2812;
 static WS2812_Color ws2812_pixels[LED_NUM];
 static uint16_t ws2812_dma_buffer[WS2812_DMA_BUFFER_LENGTH(LED_NUM)];
@@ -55,11 +60,13 @@ static uint16_t ws2812_dma_buffer[WS2812_DMA_BUFFER_LENGTH(LED_NUM)];
 TaskHandle_t task1_handle = NULL;
 TaskHandle_t task2_handle = NULL;
 Semaphore_t *testSemphore = NULL;
+#endif
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+#ifndef RTOS_SELF_TEST
 void Task1(void *parameters) {
     Printf("Task 1 is running\n");
     while (1) {
@@ -99,6 +106,7 @@ void App() {
 
     testSemphore = SemaphoreCreate(1);
 }
+#endif
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -142,6 +150,10 @@ int main(void)
 
 
 
+  SchedulerInit();
+#ifdef RTOS_SELF_TEST
+  RtosTestCreateTasks();
+#else
   WS2812_Create(&ws2812);
   ws2812.Init(&ws2812,
               &htim3,
@@ -153,8 +165,8 @@ int main(void)
   ws2812.SetBrightness(&ws2812, 80);  // 亮度 0~255
 
   VOFA_Init();
-  SchedulerInit();
   App();
+#endif
   SchedulerStart();
 
   /* USER CODE END 2 */

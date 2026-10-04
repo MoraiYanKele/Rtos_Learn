@@ -1,0 +1,53 @@
+RTOS_TEST READY version=1 total=25
+RTOS_TEST START version=1 total=25
+RTOS_TEST BEGIN id=boot_priority
+RTOS_TEST CASE id=boot_priority status=PASS actual=3 expected=3
+RTOS_TEST BEGIN id=delay_lower_runs
+RTOS_TEST CASE id=delay_lower_runs status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=systick_preempts_busy
+RTOS_TEST CASE id=systick_preempts_busy status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=delay_zero
+RTOS_TEST CASE id=delay_zero status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=nested_critical
+RTOS_TEST CASE id=nested_critical status=PASS actual=176 expected=176
+RTOS_TEST BEGIN id=semaphore_count
+RTOS_TEST CASE id=semaphore_count status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=semaphore_poll
+RTOS_TEST CASE id=semaphore_poll status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=semaphore_timeout
+RTOS_TEST CASE id=semaphore_timeout status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=semaphore_wake_preempts
+RTOS_TEST CASE id=semaphore_wake_preempts status=PASS actual=3 expected=3
+RTOS_TEST BEGIN id=semaphore_priority
+RTOS_TEST CASE id=semaphore_priority status=PASS actual=2 expected=2
+RTOS_TEST BEGIN id=semaphore_delete_busy
+RTOS_TEST CASE id=semaphore_delete_busy status=PASS actual=1 expected=1
+RTOS_TEST BEGIN id=semaphore_timeout_cleanup
+RTOS_TEST CASE id=semaphore_timeout_cleanup status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=queue_fifo_wrap
+RTOS_TEST CASE id=queue_fifo_wrap status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=queue_poll
+RTOS_TEST CASE id=queue_poll status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=queue_send_timeout
+RTOS_TEST CASE id=queue_send_timeout status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=queue_receive_timeout
+RTOS_TEST CASE id=queue_receive_timeout status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=queue_receive_wake
+RTOS_TEST CASE id=queue_receive_wake status=PASS actual=42 expected=42
+RTOS_TEST BEGIN id=queue_send_wake
+RTOS_TEST CASE id=queue_send_wake status=PASS actual=0 expected=0
+RTOS_TEST BEGIN id=queue_delete_busy
+RTOS_TEST CASE id=queue_delete_busy status=PASS actual=1 expected=1
+RTOS_TEST BEGIN id=semaphore_stress
+RTOS_TEST CASE id=semaphore_stress status=PASS actual=128 expected=128
+RTOS_TEST BEGIN id=queue_stress
+RTOS_TEST CASE id=queue_stress status=PASS actual=128 expected=128
+RTOS_TEST BEGIN id=delay_tick_wrap
+RTOS_TEST CASE id=delay_tick_wrap status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=semaphore_tick_wrap
+RTOS_TEST CASE id=semaphore_tick_wrap status=PASS actual=20 expected=20
+RTOS_TEST BEGIN id=queue_send_contention
+RTOS_TEST CASE id=queue_send_contention status=FAIL actual=2 expected=1
+RTOS_TEST BEGIN id=queue_receive_contention
+RTOS_TEST CASE id=queue_receive_contention status=FAIL actual=4294967295 expected=0
+RTOS_TEST SUMMARY status=FAIL passed=23 failed=2 total=25

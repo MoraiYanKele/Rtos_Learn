@@ -1,0 +1,175 @@
+{
+  "status": "FAIL",
+  "cases": [
+    {
+      "id": "boot_priority",
+      "status": "PASS",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "delay_lower_runs",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "systick_preempts_busy",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "delay_zero",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "nested_critical",
+      "status": "PASS",
+      "actual": 176,
+      "expected": 176
+    },
+    {
+      "id": "semaphore_count",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "semaphore_poll",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "semaphore_timeout",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "semaphore_wake_preempts",
+      "status": "PASS",
+      "actual": 3,
+      "expected": 3
+    },
+    {
+      "id": "semaphore_priority",
+      "status": "PASS",
+      "actual": 2,
+      "expected": 2
+    },
+    {
+      "id": "semaphore_delete_busy",
+      "status": "PASS",
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "id": "semaphore_timeout_cleanup",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "queue_fifo_wrap",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "queue_poll",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "queue_send_timeout",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "queue_receive_timeout",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "queue_receive_wake",
+      "status": "PASS",
+      "actual": 42,
+      "expected": 42
+    },
+    {
+      "id": "queue_send_wake",
+      "status": "PASS",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "id": "queue_delete_busy",
+      "status": "PASS",
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "id": "semaphore_stress",
+      "status": "PASS",
+      "actual": 128,
+      "expected": 128
+    },
+    {
+      "id": "queue_stress",
+      "status": "PASS",
+      "actual": 128,
+      "expected": 128
+    },
+    {
+      "id": "delay_tick_wrap",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "semaphore_tick_wrap",
+      "status": "PASS",
+      "actual": 20,
+      "expected": 20
+    },
+    {
+      "id": "queue_send_contention",
+      "status": "FAIL",
+      "actual": 2,
+      "expected": 1
+    },
+    {
+      "id": "queue_receive_contention",
+      "status": "FAIL",
+      "actual": 4294967295,
+      "expected": 0
+    }
+  ],
+  "failed_cases": [
+    "queue_send_contention",
+    "queue_receive_contention"
+  ],
+  "missing_cases": [],
+  "last_started_case": null,
+  "errors": [],
+  "summary": {
+    "status": "FAIL",
+    "passed": "23",
+    "failed": "2",
+    "total": "25"
+  },
+  "port": "COM3",
+  "baud": 115200,
+  "log": "D:\\stm32\\Project_Cmake\\Rtos_Learn\\build\\test-results\\rtos-20261004-222801-748933.log",
+  "replay": false,
+  "captured_at": "2026-10-04T22:28:02.555219+08:00",
+  "host_firmware": "D:\\stm32\\Project_Cmake\\Rtos_Learn\\build\\TestDebug\\Rtos_Learn.elf",
+  "host_firmware_sha256": "c43db7feff0130517e8b518e8133ee1dbdae1ef3419da2ac78f7dee56bb33354"
+}

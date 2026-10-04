@@ -6,9 +6,8 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/${presetName}",
-		    "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
-            "cacheVariables": {
-            }
+            "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
+            "cacheVariables": {}
         },
         {
             "name": "Debug",
@@ -23,6 +22,20 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "TestDebug",
+            "inherits": "Debug",
+            "cacheVariables": {
+                "RTOS_SELF_TEST": "ON"
+            }
+        },
+        {
+            "name": "TestRelease",
+            "inherits": "Release",
+            "cacheVariables": {
+                "RTOS_SELF_TEST": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -33,6 +46,14 @@
         {
             "name": "Release",
             "configurePreset": "Release"
+        },
+        {
+            "name": "TestDebug",
+            "configurePreset": "TestDebug"
+        },
+        {
+            "name": "TestRelease",
+            "configurePreset": "TestRelease"
         }
     ]
 }

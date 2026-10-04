@@ -5,3 +5,5 @@ build/
 *.hex
 *.map
 *.su
+
+__pycache__/

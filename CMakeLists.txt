@@ -37,6 +37,13 @@ add_executable(${CMAKE_PROJECT_NAME}
     User/my_rtos/src/heap.c
     User/my_rtos/Inc/heap.h)
 
+option(RTOS_SELF_TEST "Build the on-target RTOS test suite" OFF)
+if(RTOS_SELF_TEST)
+    target_sources(${CMAKE_PROJECT_NAME} PRIVATE tests/firmware/rtos_test.c)
+    target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE tests/firmware)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE RTOS_SELF_TEST=1)
+endif()
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
@@ -86,13 +93,17 @@ find_program(JLINK_COMMANDER
 )
 
 if(JLINK_COMMANDER)
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/flash.jlink"
+        CONTENT "r\nh\nloadfile \"$<TARGET_FILE:${CMAKE_PROJECT_NAME}>\"\nr\ng\nq\n")
     add_custom_target(flash_jlink
         COMMAND ${JLINK_COMMANDER}
             -device STM32F405RG
             -if SWD
             -speed 4000
             -autoconnect 1
-            -CommanderScript ${CMAKE_SOURCE_DIR}/flash.jlink
+            -ExitOnError 1
+            -NoGui 1
+            -CommanderScript ${CMAKE_CURRENT_BINARY_DIR}/flash.jlink
         DEPENDS ${CMAKE_PROJECT_NAME}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Flashing ${CMAKE_PROJECT_NAME} with J-Link"
