@@ -134,6 +134,7 @@ void TaskCreate(TaskFunction_t taskCode, uint16_t const stackDepth,
                 
 void TaskDelay(uint16_t _ticks);
 void CheckTicks(void);
+uint8_t IsTickReached(uint32_t now, uint32_t deadline);
 uint32_t StateAdd(TCB_t *self, uint32_t *stateTable);
 uint32_t StateRemove(TCB_t *self, uint32_t *stateTable);
 uint8_t CheckState(TCB_t *self, uint32_t *stateTable);

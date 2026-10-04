@@ -18,3 +18,6 @@ Queue_t *QueueCrate(uint32_t queueLength, uint32_t queueSize);
 uint8_t QueueDelete(Queue_t *queue);
 
 void WriteToQueue(Queue_t *queue, void *buff, uint32_t curreentTcbPriority);
+
+uint8_t QueueSend(Queue_t *queue, void *buff, uint32_t ticks);
+uint8_t QueueReceive(Queue_t *queue, void *buff, uint32_t ticks);

@@ -104,30 +104,37 @@ uint8_t QueueSend(Queue_t *queue, void *buff, uint32_t ticks) {
         ExitCritical(basepri);
         return false;
     }
+    uint32_t end_tick = tickBase + ticks;
 
-    cur_tcb->waitTable = &queue->sendTable;
-    cur_tcb->waitResult = WAIT_PENDING;
+    for (;;) {
+        
+        WaitResult_t wait_res = cur_tcb->waitResult;
+        
+        if (wait_res == WAIT_TIMEOUT || IsTickReached(tickBase, end_tick)) {
+            cur_tcb->waitResult = WAIT_NONE;
+            ExitCritical(basepri);
+            return false;
+        } else if (wait_res == WAIT_SIGNALED && queue->messageNumber < queue->nodeNumber) {
+            cur_tcb->waitResult = WAIT_NONE;
+            WriteToQueue(queue, buff, cur_prio);
+            ExitCritical(basepri);
+            return true;
+        }
 
-    StateAdd(cur_tcb, cur_tcb->waitTable);
-    StateAdd(cur_tcb, &stateTable[BLOCK]);
-    wakeTicksTable[cur_prio] = tickBase + ticks;
-    StateAdd(cur_tcb, &stateTable[DELAY]);
-    StateRemove(cur_tcb, &stateTable[READY]);
+        cur_tcb->waitResult = WAIT_PENDING;
+        cur_tcb->waitTable = &queue->sendTable;
 
-    SwitchTask();
-    ExitCritical(basepri);
+        StateAdd(cur_tcb, cur_tcb->waitTable);
+        StateAdd(cur_tcb, &stateTable[BLOCK]);
+        StateAdd(cur_tcb, &stateTable[DELAY]);
+        wakeTicksTable[cur_prio] = end_tick;
+        StateRemove(cur_tcb, &stateTable[READY]);
 
-    basepri = EnterCritical();
-    WaitResult_t result = cur_tcb->waitResult;
-    cur_tcb->waitResult = WAIT_NONE;
-
-    if (result == WAIT_TIMEOUT) {
+        SwitchTask();
         ExitCritical(basepri);
-        return false;
-    } else {
-        WriteToQueue(queue, buff, cur_prio);
-        ExitCritical(basepri);
-        return true;
+
+        basepri = EnterCritical();
+
     }
 }
 
@@ -147,29 +154,35 @@ uint8_t QueueReceive(Queue_t *queue, void *buff, uint32_t ticks) {
         return false;
     }
 
-    cur_tcb->waitTable = &queue->receiveTable;
-    cur_tcb->waitResult = WAIT_PENDING;
+    uint32_t end_tick = tickBase + ticks;
 
-    StateAdd(cur_tcb, cur_tcb->waitTable);
-    StateAdd(cur_tcb, &stateTable[BLOCK]);
-    wakeTicksTable[cur_prio] = tickBase + ticks;
-    StateAdd(cur_tcb, &stateTable[DELAY]);
-    StateRemove(cur_tcb, &stateTable[READY]);
+    for (;;) {
+        WaitResult_t wait_res = cur_tcb->waitResult;
 
-    SwitchTask();
-    ExitCritical(basepri);
+        if (wait_res == WAIT_TIMEOUT || IsTickReached(tickBase, end_tick)) {
+            cur_tcb->waitResult = WAIT_NONE;
+            ExitCritical(basepri);
+            return false;
+        } else if (wait_res == WAIT_SIGNALED && queue->messageNumber > 0) {
+            cur_tcb->waitResult = WAIT_NONE;
+            ExtractFromQueue(queue, buff, cur_prio);
+            ExitCritical(basepri);
+            return true;
+        }
 
-    basepri = EnterCritical();
+        /* A wake-up does not reserve a message; register again if it was taken. */
+        cur_tcb->waitResult = WAIT_PENDING;
+        cur_tcb->waitTable = &queue->receiveTable;
 
-    WaitResult_t result = cur_tcb->waitResult;
-    cur_tcb->waitResult = WAIT_NONE;
+        StateAdd(cur_tcb, cur_tcb->waitTable);
+        StateAdd(cur_tcb, &stateTable[BLOCK]);
+        StateAdd(cur_tcb, &stateTable[DELAY]);
+        wakeTicksTable[cur_prio] = end_tick;
+        StateRemove(cur_tcb, &stateTable[READY]);
 
-    if (result == WAIT_TIMEOUT) {
+        SwitchTask();
         ExitCritical(basepri);
-        return false;
-    } else {
-        ExtractFromQueue(queue, buff, cur_prio);
-        ExitCritical(basepri);
-        return true;
+
+        basepri = EnterCritical();
     }
 }

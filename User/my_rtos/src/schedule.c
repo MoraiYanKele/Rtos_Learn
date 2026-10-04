@@ -111,7 +111,7 @@ void TaskSwitchContext(void) {
 }
 
 
-static inline uint8_t IsTickReached(uint32_t now, uint32_t deadline) {
+inline uint8_t IsTickReached(uint32_t now, uint32_t deadline) {
     return (uint32_t)(now - deadline) < TICK_HALF_RANGE;
 }
 
